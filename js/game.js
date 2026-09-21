@@ -35,6 +35,16 @@ Game.update = function () {
     return;
   }
 
+   Game.startLevel = function (levelNumber) {  
+  Game.levelNumber = levelNumber;  
+  Level.build(levelNumber);  
+  Enemy.reset();  
+  Player.reset();  
+  Game.mode = "playing";  
+  Game.showMessage("");  
+};  
+
+
   // If we are not playing, nothing moves. We just wait for R.
   if (Game.mode !== "playing") { return; }
 
