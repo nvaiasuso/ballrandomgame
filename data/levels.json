@@ -3,6 +3,15 @@
   
   "levels": [  
     {  
+      "name": "Stealth Test",  
+      "pieces": [  
+        "start",  
+        "stealth_test",  
+        "flat",  
+        "finish"  
+      ]  
+    },  
+    {  
       "name": "Level 1 - Warm Up",  
       "pieces": [  
         "start",  
@@ -15,19 +24,6 @@
         "finish"  
       ]  
     },  
-
-
-        {  
-      "name": "Stealth Test",  
-      "pieces": [  
-        "start",  
-        "stealth_test",  
-        "flat",  
-        "finish"  
-      ]  
-    }  
-
-    
     {  
       "name": "Level 2 - Watch Your Step",  
       "pieces": [  
