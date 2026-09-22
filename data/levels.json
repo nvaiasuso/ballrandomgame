@@ -15,6 +15,19 @@
         "finish"  
       ]  
     },  
+
+
+        {  
+      "name": "Stealth Test",  
+      "pieces": [  
+        "start",  
+        "stealth_test",  
+        "flat",  
+        "finish"  
+      ]  
+    }  
+
+    
     {  
       "name": "Level 2 - Watch Your Step",  
       "pieces": [  
