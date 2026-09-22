@@ -1,56 +1,33 @@
-{  
-  "_comment": "A level is just a list of  piece names in order, left to right.",  
-  
-  "levels": [  
-    {  
-      "name": "Stealth Test",  
-      "pieces": [  
-        "start",  
-        "stealth_test",  
-        "flat",  
-        "finish"  
-      ]  
-    },  
-    {  
-      "name": "Level 1 - Warm Up",  
-      "pieces": [  
-        "start",  
-        "flat",  
-        "gap",  
-        "flat",  
-        "spikes",  
-        "platform",  
-        "stairs",  
-        "finish"  
-      ]  
-    },  
-    {  
-      "name": "Level 2 - Watch Your Step",  
-      "pieces": [  
-        "start",  
-        "spikes",  
-        "gap",  
-        "step",  
-        "spikepit",  
-        "platform",  
-        "gap",  
-        "flat",  
-        "finish"  
-      ]  
-    },  
-    {  
-      "name": "Level 3 - Hard Run",  
-      "pieces": [  
-        "start",  
-        "flat",  
-        "gap",  
-        "hard_gap3",  
-        "spikes",  
-        "platform",  
-        "hard_gauntlet",  
-        "stairs",  
-        "finish"  
-      ]  
-    }  
-  ]  
-}  
+{
+  "_comment": "A level is just a list of piece names in order, left to right.",
+  "levels": [
+    {
+      "name": "Stealth Test",
+      "pieces": ["start", "stealth_test", "flat", "finish"]
+    },
+    {
+      "name": "Level 1 - Warm Up",
+      "pieces": ["start", "flat", "gap", "flat", "spikes", "platform", "stairs", "finish"]
+    },
+    {
+      "name": "Level 2 - Watch Your Step",
+      "pieces": ["start", "spikes", "gap", "step", "spikepit", "platform", "gap", "flat", "finish"]
+    },
+    {
+      "name": "Level 3 - Hard Run",
+      "pieces": ["start", "flat", "gap", "hard_gap3", "spikes", "platform", "hard_gauntlet", "stairs", "finish"]
+    },
+    {
+      "name": "Level 4 - Enemy Training",
+      "pieces": ["start", "flat", "stealth_test", "platform", "gap", "flat", "finish"]
+    },
+    {
+      "name": "Level 5 - The Gauntlet",
+      "pieces": ["start", "flat", "hard_gauntlet", "gap", "step", "spikes", "platform", "finish"]
+    },
+    {
+      "name": "Level 6 - Final Assault",
+      "pieces": ["start", "hard_gap3", "platform", "stealth_test", "spikepit", "hard_gauntlet", "stairs", "finish"]
+    }
+  ]
+}
