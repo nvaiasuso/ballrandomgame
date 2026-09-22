@@ -1,6 +1,6 @@
-// =====================================================================  
-// enemy.js -- sleeper enemies: patrol, question, run, and shoot  
-// =====================================================================  
+/* =====================================================================  
+   enemy.js -- sleeper enemies: patrol, question, run, and shoot  
+   ===================================================================== */  
   
 var Enemy = {  
   list: [],  
@@ -17,10 +17,11 @@ Enemy.reset = function () {
         Enemy.list.push({  
           x: col * CONFIG.TILE,  
           y: row * CONFIG.TILE,  
-          state: "patrol",        // patrol, question, or run  
-          timer: 0,               // how long it has seen you  
-          dir: 1,                 // 1 = right, -1 = left  
-          alerted: false,         // has it called the others?  
+          vy: 0,  
+          state: "patrol",  
+          timer: 0,  
+          dir: 1,  
+          alerted: false,  
           shootTimer: 0  
         });  
         Enemy.setTile(col, row, ".");  
@@ -35,6 +36,29 @@ Enemy.setTile = function (col, row, character) {
   Level.grid[row] = line.substring(0, col) + character + line.substring(col + 1);  
 };  
   
+// --- gravity: enemies fall, land, and climb 1-block steps ------------  
+Enemy.physics = function (e) {  
+  var size = CONFIG.ENEMY_SIZE;  
+  
+  var aheadX = e.x + e.dir * CONFIG.ENEMY_SPEED;  
+  if (Collide.hitsSolid(aheadX, e.y, size, size) &&  
+      !Collide.hitsSolid(aheadX, e.y - CONFIG.TILE, size, size)) {  
+    e.y = e.y - CONFIG.TILE;  
+  }  
+  
+  e.vy = e.vy + CONFIG.GRAVITY;  
+  if (e.vy > CONFIG.MAX_FALL) { e.vy = CONFIG.MAX_FALL; }  
+  var stepY = 1;  
+  while (stepY <= Math.abs(e.vy)) {  
+    if (Collide.hitsSolid(e.x, e.y + stepY, size, size)) {  
+      e.vy = 0;  
+      break;  
+    }  
+    e.y = e.y + 1;  
+    stepY = stepY + 1;  
+  }  
+};  
+  
 Enemy.update = function () {  
   var size = CONFIG.PLAYER_SIZE;  
   
@@ -43,21 +67,25 @@ Enemy.update = function () {
     var canSee = Enemy.playerVisible(e);  
   
     if (e.state === "patrol") {  
-      // walk back and forth, turn at walls  
       var nextX = e.x + e.dir * CONFIG.ENEMY_SPEED;  
-      if (Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {  
+  
+      // turn around at a wall OR at a ledge, so it never floats off  
+      var willFall = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2,  
+                                        CONFIG.ENEMY_SIZE, 2);  
+      if (Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE) ||  
+          willFall) {  
         e.dir = -e.dir;  
       } else {  
         e.x = nextX;  
       }  
-      // glimpsed or heard nearby -> question  
+      Enemy.physics(e);  
+  
       if (canSee || Enemy.playerNear(e)) {  
         e.state = "question";  
         e.timer = 0;  
       }  
   
     } else if (e.state === "question") {  
-      // stand still and check things out  
       e.timer = canSee ? e.timer + 1 : 0;  
       if (e.timer >= CONFIG.SPOT_FRAMES) {  
         e.state = "run";  
@@ -67,13 +95,13 @@ Enemy.update = function () {
         }  
       }  
       if (!canSee && !Enemy.playerNear(e)) {  
-        e.state = "patrol"; // lost interest  
+        e.state = "patrol";  
       }  
   
     } else if (e.state === "run") {  
-      // chase, lead the shots, and keep shooting  
       if (Player.x < e.x) { e.x = e.x - CONFIG.ENEMY_SPEED; }  
       if (Player.x > e.x + CONFIG.ENEMY_SIZE) { e.x = e.x + CONFIG.ENEMY_SPEED; }  
+      Enemy.physics(e);  
       e.shootTimer = e.shootTimer - 1;  
       if (canSee && e.shootTimer <= 0) {  
         Enemy.shoot(e);  
@@ -85,7 +113,7 @@ Enemy.update = function () {
     }  
   }  
   
-  // move every bullet, kill the player, remove spent bullets  
+  // move every bullet, hit the player, remove spent bullets  
   for (var b = Enemy.bullets.length - 1; b >= 0; b--) {  
     var bullet = Enemy.bullets[b];  
     bullet.x = bullet.x + bullet.vx;  
@@ -93,21 +121,19 @@ Enemy.update = function () {
     if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) ||  
         bullet.x < 0 || bullet.x > Level.pixelWidth()) {  
       Enemy.bullets.splice(b, 1);  
-    } else if (Collide.hitsSolid === undefined) {  
-      // (never happens -- kept simple)  
     } else if (bullet.x + 8 > Player.x && bullet.x < Player.x + size &&  
                bullet.y + 8 > Player.y && bullet.y < Player.y + size) {  
       Enemy.bullets.splice(b, 1);  
-      Game.startLevel(Game.levelNumber); // a hit restarts the level  
+      Game.startLevel(Game.levelNumber);  
     }  
   }  
 };  
   
-// true if the enemy has a clear line to the player on the same band of screen  
+// true if the enemy can see the player on roughly its own height band  
 Enemy.playerVisible = function (e) {  
   var size = CONFIG.PLAYER_SIZE;  
   if (Math.abs((e.y + CONFIG.ENEMY_SIZE / 2) - (Player.y + size / 2)) > CONFIG.TILE * 2) {  
-    return false; // too far above or below to see  
+    return false;  
   }  
   return Math.abs(Player.x - e.x) < CONFIG.SPOT_DISTANCE;  
 };  
@@ -153,7 +179,6 @@ Enemy.draw = function () {
   var ctx = Draw.ctx;  
   for (var i = 0; i < Enemy.list.length; i++) {  
     var e = Enemy.list[i];  
-    // asleep = plain circle, question = circle with a dot, run = circle with a line "eye"  
     ctx.beginPath();  
     ctx.arc(e.x + CONFIG.ENEMY_SIZE / 2, e.y + CONFIG.ENEMY_SIZE / 2,  
             CONFIG.ENEMY_SIZE / 2, 0, Math.PI * 2);  
@@ -170,7 +195,6 @@ Enemy.draw = function () {
       ctx.fill();  
     }  
   }  
-  // bullets are small black squares  
   ctx.fillStyle = "#000000";  
   for (var b = 0; b < Enemy.bullets.length; b++) {  
     ctx.fillRect(Enemy.bullets[b].x, Enemy.bullets[b].y, 8, 8);  
