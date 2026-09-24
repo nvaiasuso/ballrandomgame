@@ -8,23 +8,32 @@ var Input = {
   jump: false,
   restart: false,
   shoot: false,
+  screenX: 0,
   mouseX: 0,
   mouseY: 0,
   mouseDown: false,
   versionToggle: false,
   adminSkip: false,
   adminRandom: false,
-  gamble: false
+  gamble: false,
+  dash: false,
+  endless: false
 };
 
 Input.updateMouse = function (event) {
   var rect = Draw.canvas.getBoundingClientRect();
-  Input.mouseX = (event.clientX - rect.left) * CONFIG.CANVAS_W / rect.width + Draw.cameraX;
+  Input.screenX = (event.clientX - rect.left) * CONFIG.CANVAS_W / rect.width;
+  Input.mouseX = Input.screenX + Draw.cameraX;
   Input.mouseY = (event.clientY - rect.top) * CONFIG.CANVAS_H / rect.height;
+};
+
+Input.refreshMouseWorld = function () {
+  Input.mouseX = Input.screenX + Draw.cameraX;
 };
 
 window.addEventListener("mousemove", function (event) { Input.updateMouse(event); });
 window.addEventListener("mousedown", function (event) {
+  AudioFX.unlock();
   if (event.button === 0) { Input.mouseDown = true; Input.updateMouse(event); }
 });
 window.addEventListener("mouseup", function (event) {
@@ -32,6 +41,7 @@ window.addEventListener("mouseup", function (event) {
 });
 
 window.addEventListener("keydown", function (event) {
+  AudioFX.unlock();
   if (event.shiftKey && (event.code === "KeyQ" || event.key === "q" || event.key === "Q")) {
     Input.adminSkip = true;
     event.preventDefault();
@@ -50,6 +60,11 @@ window.addEventListener("keydown", function (event) {
     Input.gamble = true;
     event.preventDefault();
   }
+  if (!event.repeat && !event.shiftKey && (event.key === "e" || event.key === "E")) {
+    Input.endless = true;
+    event.preventDefault();
+  }
+  if (event.key === "Shift") { Input.dash = true; event.preventDefault(); }
   setKey(event.key, true);
   if (["ArrowLeft", "ArrowRight", "ArrowUp", " "].indexOf(event.key) >= 0) {
     event.preventDefault();
@@ -66,4 +81,5 @@ function setKey(key, isDown) {
   if (key === "ArrowUp" || key === " " || key === "w" || key === "W") { Input.jump = isDown; }
   if (key === "r" || key === "R") { Input.restart = isDown; }
   if (key === "x" || key === "X" || key === "k" || key === "K") { Input.shoot = isDown; }
+  if (key === "Shift") { Input.dash = isDown; }
 }

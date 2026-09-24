@@ -12,6 +12,10 @@
     <span id="level-hud">LEVEL</span>
     <span id="timer-hud">TIME 45</span>
     <span id="weapon-hud">WEAPON: NONE</span>
+    <span id="combo-hud">COMBO 0</span>
+    <span id="health-hud">HEALTH 3/3</span>
+    <span id="dash-hud">DASH READY</span>
+    <span id="score-hud">SCORE 0</span>
     <span id="enemy-hud">ENEMIES 0</span>
   </div>
   <button id="gamble-button" type="button">GAMBLE [G]</button>
@@ -20,7 +24,7 @@
   <p class="controls">
     LEFT / RIGHT or A / D to roll &nbsp;&middot;&nbsp;
     SPACE / UP to jump &nbsp;&middot;&nbsp;
-    Collect a gun, aim with the mouse, then click or press X to fire &nbsp;&middot;&nbsp;
+    Collect guns, aim with the mouse, then click or press X to fire &nbsp;&middot;&nbsp; SHIFT to dash &nbsp;&middot;&nbsp;
     R to restart &nbsp;&middot;&nbsp; G gamble for a random buff or debuff &nbsp;&middot;&nbsp;
     SHIFT+Q skip level &nbsp;&middot;&nbsp; SHIFT+G random test level
   </p>
@@ -34,6 +38,7 @@
     </div>
   </div>
   <script src="js/config.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/input.js"></script>
   <script src="js/level.js"></script>
   <script src="js/collide.js"></script>

@@ -44,6 +44,38 @@
     {
       "name": "Level 10 - The Black Crown",
       "pieces": ["start", "flat", "enemy_line", "armory", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 11 - Redline",
+      "pieces": ["start", "enemy_line", "flat", "armory", "enemy_tower", "finish"]
+    },
+    {
+      "name": "Level 12 - Final Arsenal",
+      "pieces": ["start", "hard_gauntlet", "armory", "enemy_line", "enemy_tower", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 13 - Siege Works",
+      "pieces": ["start", "turret_room", "charger_run", "armory", "finish"]
+    },
+    {
+      "name": "Level 14 - Split Decision",
+      "pieces": ["start", "splitter_hall", "enemy_line", "gap", "armory", "finish"]
+    },
+    {
+      "name": "Level 15 - Wraith Ascendant",
+      "pieces": ["start", "turret_room", "charger_run", "splitter_hall", "armory", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 16 - Falling Floor",
+      "pieces": ["start", "crumble_run", "charger_run", "moving_platform", "armory", "finish"]
+    },
+    {
+      "name": "Level 17 - Dark Circuit",
+      "pieces": ["start", "dark_run", "turret_room", "charger_run", "finish"]
+    },
+    {
+      "name": "Level 18 - Cursed Arsenal",
+      "pieces": ["start", "risk_armory", "splitter_hall", "boss_arena", "finish"]
     }
   ]
 }

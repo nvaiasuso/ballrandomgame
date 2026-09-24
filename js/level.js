@@ -16,7 +16,10 @@ var Level = {
   cols: 0,          // how many columns wide the finished world is
   name: "",
   startX: 0,        // where the player begins, in pixels
-  startY: 0
+  startY: 0,
+  finishTiles: [],
+  crumbleTiles: {},
+  movingPlatforms: []
 };
 
 // --- STEP 1: read the two data files ----------------------------------
@@ -47,6 +50,7 @@ Level.build = function (levelNumber) {
 
 Level.buildPieces = function (name, pieceNames) {
   Level.name = name;
+  Level.dark = name.indexOf("Dark") >= 0 || pieceNames.indexOf("dark_run") >= 0;
   Level.grid = [];
   Level.cols = pieceNames.length * CONFIG.PIECE_COLS;
 
@@ -71,20 +75,61 @@ Level.buildPieces = function (name, pieceNames) {
   }
 
   Level.findStart();
+  Level.finishTiles = [];
+  for (var finishRow = 0; finishRow < CONFIG.ROWS; finishRow++) {
+    for (var finishCol = 0; finishCol < Level.cols; finishCol++) {
+      if (Level.charAt(finishCol, finishRow) === "F") { Level.finishTiles.push({ x: finishCol * CONFIG.TILE, y: finishRow * CONFIG.TILE }); }
+    }
+  }
+  Level.crumbleTiles = {};
+  Level.movingPlatforms = [];
+  for (var scanRow = 0; scanRow < CONFIG.ROWS; scanRow++) {
+    for (var scanCol = 0; scanCol < Level.cols; scanCol++) {
+      var dynamicChar = Level.charAt(scanCol, scanRow);
+      if (dynamicChar === "C") { Level.crumbleTiles[scanCol + ":" + scanRow] = { timer: 45, cooldown: 0 }; }
+      if (dynamicChar === "M") { Level.movingPlatforms.push({ baseX: scanCol * CONFIG.TILE, x: scanCol * CONFIG.TILE, y: scanRow * CONFIG.TILE, width: CONFIG.TILE * 3, phase: scanCol }); }
+    }
+  }
+};
+
+Level.updateDynamic = function () {
+  var key;
+  for (key in Level.crumbleTiles) {
+    var parts = key.split(":");
+    var col = Number(parts[0]), row = Number(parts[1]);
+    var tile = Level.crumbleTiles[key];
+    if (tile.cooldown > 0) { tile.cooldown--; if (tile.cooldown === 0) { tile.timer = 45; } continue; }
+    var x = col * CONFIG.TILE, y = row * CONFIG.TILE;
+    if (Player.x + CONFIG.PLAYER_SIZE > x && Player.x < x + CONFIG.TILE &&
+        Player.y + CONFIG.PLAYER_SIZE >= y - 4 && Player.y + CONFIG.PLAYER_SIZE <= y + 8) {
+      tile.timer--;
+      if (tile.timer <= 0) { tile.cooldown = 120; }
+    }
+  }
+  for (var i = 0; i < Level.movingPlatforms.length; i++) {
+    var platform = Level.movingPlatforms[i];
+    platform.x = platform.baseX + Math.sin(Game.levelTime / 28 + platform.phase) * 55;
+  }
 };
 
 Level.buildRandom = function () {
-  var choices = ["flat", "gap", "spikes", "step", "platform", "stairs", "spikepit", "hard_gap3", "hard_gauntlet", "enemy_line", "enemy_tower"];
+  var random = Math.random;
+  if (arguments.length > 0) {
+    var state = arguments[0] >>> 0;
+    random = function () { state = (Math.imul(1664525, state) + 1013904223) >>> 0; return state / 4294967296; };
+  }
+  var choices = ["flat", "gap", "spikes", "step", "platform", "stairs", "spikepit", "hard_gap3", "hard_gauntlet", "enemy_line", "enemy_tower", "turret_room", "charger_run", "splitter_hall", "crumble_run", "moving_platform"];
+  if (Game.endless && Game.endlessWave > 2) { choices.push("boss_arena"); }
   var pieceNames = ["start"];
   for (var i = 0; i < 14; i++) {
-    pieceNames.push(choices[Math.floor(Math.random() * choices.length)]);
+    pieceNames.push(choices[Math.floor(random() * choices.length)]);
   }
   pieceNames.push("finish");
   Level.buildPieces("RANDOM ASSAULT", pieceNames);
   var enemyChars = Object.keys(CONFIG.ENEMY_TYPES);
   for (var col = 8; col < Level.cols - 8; col++) {
-    if (Level.charAt(col, 7) === "." && Level.isSolid(col, 8) && Math.random() < 0.7) {
-      Level.setCharAt(col, 7, enemyChars[Math.floor(Math.random() * enemyChars.length)]);
+    if (Level.charAt(col, 7) === "." && Level.isSolid(col, 8) && random() < 0.7) {
+      Level.setCharAt(col, 7, enemyChars[Math.floor(random() * enemyChars.length)]);
     }
   }
 };
@@ -118,7 +163,12 @@ Level.charAt = function (col, row) {
   return Level.grid[row].charAt(col);
 };
 
-Level.isSolid  = function (col, row) { return Level.charAt(col, row) === "#"; };
+Level.isSolid  = function (col, row) {
+  var character = Level.charAt(col, row);
+  if (character === "#") { return true; }
+  if (character === "C") { return Level.crumbleTiles[col + ":" + row] && Level.crumbleTiles[col + ":" + row].cooldown === 0; }
+  return false;
+};
 Level.isSpike  = function (col, row) { return Level.charAt(col, row) === "^"; };
 Level.isLava   = function (col, row) { return Level.charAt(col, row) === "~"; };
 Level.isFinish = function (col, row) { return Level.charAt(col, row) === "F"; };

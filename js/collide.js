@@ -32,6 +32,11 @@ Collide.hitsSolid = function (x, y, width, height) {
   for (var i = 0; i < squares.length; i++) {
     if (Level.isSolid(squares[i].col, squares[i].row)) { return true; }
   }
+  for (var p = 0; p < Level.movingPlatforms.length; p++) {
+    var platform = Level.movingPlatforms[p];
+    if (x + width > platform.x && x < platform.x + platform.width &&
+        y + height > platform.y && y < platform.y + 12) { return true; }
+  }
   return false;
 };
 

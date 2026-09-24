@@ -20,7 +20,7 @@ h1 {
 #hud {
   display: flex;
   gap: 10px;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto 8px;
   justify-content: space-between;
   font-size: 12px;
