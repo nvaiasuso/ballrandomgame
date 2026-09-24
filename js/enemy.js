@@ -7,13 +7,15 @@ var Enemy = {
   bullets: [],
   playerBullets: [],
   pickups: [],
+  shards: [],
   hazards: [],
   boss: null,
   deadBodies: [],
   effects: [],
   cinematic: { flash: 0, shake: 0, banner: 0 },
   lavaWallX: -240,
-  ambushes: []
+  ambushes: [],
+  cornerAmbushUsed: false
 };
 
 Enemy.reset = function () {
@@ -21,6 +23,7 @@ Enemy.reset = function () {
   Enemy.bullets = [];
   Enemy.playerBullets = [];
   Enemy.pickups = [];
+  Enemy.shards = [];
   Enemy.hazards = [];
   Enemy.boss = null;
   Enemy.deadBodies = [];
@@ -28,6 +31,7 @@ Enemy.reset = function () {
   Enemy.cinematic = { flash: 0, shake: 0, banner: 0 };
   Enemy.lavaWallX = -240;
   Enemy.ambushes = [];
+  Enemy.cornerAmbushUsed = false;
   for (var triggerX = CONFIG.AMBUSH_DISTANCE; triggerX < Level.pixelWidth() - CONFIG.TILE * 3; triggerX += CONFIG.AMBUSH_DISTANCE) {
     Enemy.ambushes.push({ x: triggerX, triggered: false });
   }
@@ -45,7 +49,10 @@ Enemy.reset = function () {
           splitter: !!enemyType.splitter, teleport: !!enemyType.teleport, burrow: !!enemyType.burrow,
           mineLayer: !!enemyType.mineLayer, burst: !!enemyType.burst, laser: !!enemyType.laser,
           shield: !!enemyType.shield, armor: enemyType.armor || 0, chargeTimer: 0,
-          burrowTimer: 0, burrowCooldown: 0, stunned: false, stunTimer: 0
+          burrowTimer: 0, burrowCooldown: 0, stunned: false, stunTimer: 0,
+          support: !!enemyType.support, suicide: !!enemyType.suicide, glide: !!enemyType.glide,
+          regenTimer: 0, healTimer: 90, slamCooldown: 0, shieldTurnTimer: 0,
+          pathDirection: 0, pathTimer: 0
         });
         Enemy.setTile(col, row, ".");
       }
@@ -55,7 +62,7 @@ Enemy.reset = function () {
           arenaMinX: col * CONFIG.TILE - CONFIG.TILE * 3,
           arenaMaxX: (col + 5) * CONFIG.TILE - CONFIG.BOSS_SIZE,
           dir: -1, onGround: false, health: CONFIG.BOSS_HEALTH,
-           attackTimer: CONFIG.BOSS_ATTACK_FRAMES, spawnTimer: CONFIG.BOSS_SPAWN_FRAMES, attackPhase: 0, floorTimer: 90, enraged: false
+           attackTimer: CONFIG.BOSS_ATTACK_FRAMES, spawnTimer: CONFIG.BOSS_SPAWN_FRAMES, attackPhase: 0, floorTimer: 90, phase: 0, teleportCooldown: 0
         };
         Enemy.setTile(col, row, ".");
       }
@@ -77,6 +84,11 @@ Enemy.reset = function () {
       }
     }
   }
+  for (var shardCol = 3; shardCol < Level.cols - 2; shardCol += 6) {
+    if (Level.charAt(shardCol, 7) === "." && Level.isSolid(shardCol, 8)) {
+      Enemy.shards.push({ x: shardCol * CONFIG.TILE + 14, y: 7 * CONFIG.TILE + 14, size: 12, collected: false });
+    }
+  }
 };
 
 Enemy.setTile = function (col, row, character) {
@@ -93,6 +105,7 @@ Enemy.physics = function (e) {
     e.y -= CONFIG.TILE;
   }
   e.vy += CONFIG.GRAVITY;
+  if (e.glide && e.vy > 2) { e.vy = 2; }
   if (e.vy > CONFIG.MAX_FALL) { e.vy = CONFIG.MAX_FALL; }
   e.onGround = false;
   var stepY = e.vy > 0 ? 1 : (e.vy < 0 ? -1 : 0);
@@ -106,11 +119,67 @@ Enemy.physics = function (e) {
   }
 };
 
+Enemy.routeDirection = function (e, preferred) {
+  var choices = [preferred, -preferred];
+  for (var i = 0; i < choices.length; i++) {
+    var direction = choices[i];
+    var probeX = e.x + direction * Math.max(e.speed * 3, 12);
+    var blocked = Collide.hitsSolid(probeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
+    var spikeAhead = Collide.hitsSpike(probeX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+    var voidAhead = !Collide.hitsSolid(probeX, e.y + CONFIG.ENEMY_SIZE + 4, CONFIG.ENEMY_SIZE, 4);
+    if (!blocked && !spikeAhead && (!voidAhead || e.onGround)) { return direction; }
+  }
+  return preferred;
+};
+
+Enemy.findPathDirection = function (e) {
+  var startCol = Math.floor((e.x + CONFIG.ENEMY_SIZE / 2) / CONFIG.TILE);
+  var startRow = Math.floor((e.y + CONFIG.ENEMY_SIZE / 2) / CONFIG.TILE);
+  var targetCol = Math.floor((Player.x + CONFIG.PLAYER_SIZE / 2) / CONFIG.TILE);
+  var targetRow = Math.floor((Player.y + CONFIG.PLAYER_SIZE / 2) / CONFIG.TILE);
+  if (startCol === targetCol && startRow === targetRow) { return 0; }
+  var queue = [{ col: startCol, row: startRow, first: 0 }];
+  var visited = {};
+  visited[startCol + ":" + startRow] = true;
+  var head = 0;
+  var directions = [{ col: 1, row: 0 }, { col: -1, row: 0 }, { col: 0, row: -1 }, { col: 0, row: 1 }];
+  while (head < queue.length && queue.length < 180) {
+    var current = queue[head++];
+    for (var i = 0; i < directions.length; i++) {
+      var nextCol = current.col + directions[i].col;
+      var nextRow = current.row + directions[i].row;
+      var key = nextCol + ":" + nextRow;
+      if (visited[key] || nextCol < 0 || nextCol >= Level.cols || nextRow < 0 || nextRow >= CONFIG.ROWS) { continue; }
+      if (Level.isSolid(nextCol, nextRow) || Level.isSpike(nextCol, nextRow) || Level.isLava(nextCol, nextRow)) { continue; }
+      visited[key] = true;
+      var first = current.first || (directions[i].row < 0 ? 2 : (directions[i].row > 0 ? -2 : directions[i].col));
+      if (nextCol === targetCol && nextRow === targetRow) { return first; }
+      queue.push({ col: nextCol, row: nextRow, first: first });
+    }
+  }
+  return 0;
+};
+
 Enemy.chase = function (e) {
   if (e.turret) { return; }
   var targetX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  if (e.flanker) { targetX += e.flankSide * 105; }
   var enemyCenterX = e.x + CONFIG.ENEMY_SIZE / 2;
-  e.dir = targetX < enemyCenterX ? -1 : 1;
+  var targetDirection = targetX < enemyCenterX ? -1 : 1;
+  if (!e.flying) {
+    if ((e.pathTimer || 0) <= 0) { e.pathDirection = Enemy.findPathDirection(e); e.pathTimer = 18; }
+    else { e.pathTimer--; }
+    if (e.pathDirection === 2 && e.onGround) { e.vy = -CONFIG.JUMP_POWER * 0.82; }
+    if (e.pathDirection && Math.abs(e.pathDirection) === 1) { targetDirection = e.pathDirection; }
+  }
+  if (!e.flying) { targetDirection = Enemy.routeDirection(e, targetDirection); }
+  if (e.shield && targetDirection !== e.dir) {
+    e.shieldTurnTimer = (e.shieldTurnTimer || 0) + 1;
+    if (e.shieldTurnTimer >= 18) { e.dir = targetDirection; e.shieldTurnTimer = 0; }
+  } else {
+    e.shieldTurnTimer = 0;
+    e.dir = targetDirection;
+  }
   if (e.flying) {
     var targetY = Player.y + CONFIG.PLAYER_SIZE / 2;
     var dx = targetX - enemyCenterX;
@@ -129,7 +198,8 @@ Enemy.chase = function (e) {
   var nextX = e.x + e.dir * chaseSpeed;
   var blocked = Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
   var edge = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
-  if (blocked) {
+  var spike = Collide.hitsSpike(nextX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+  if (blocked || spike) {
     if (e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
       e.vy = -CONFIG.JUMP_POWER * 0.8;
     }
@@ -168,7 +238,7 @@ Enemy.kill = function (index, stomped) {
   e.dead = true;
   var upgradeTypes = ["b", "m", "w", "q", "f"];
   var level = upgradeTypes.indexOf(e.type) >= 0 ? 2 : 1;
-  var dropWeapons = ["shotgun", "laser", "grenade", "homing"];
+  var dropWeapons = ["shotgun", "laser", "grenade", "homing", "burst", "boomerang"];
   var weaponType = dropWeapons[Math.floor(Math.random() * dropWeapons.length)];
   if (e.type === "v" || e.type === "r") { level = 2; }
   if (e.splitter) { level = 2; }
@@ -197,6 +267,7 @@ Enemy.kill = function (index, stomped) {
     Enemy.spawnSplitterMinion(e.x - 14, e.y);
     Enemy.spawnSplitterMinion(e.x + 14, e.y);
   }
+  if (stomped) { AudioFX.stomp(); }
   AudioFX.defeat();
   Game.registerKill(false);
   Enemy.cinematic.shake = Math.min(18, 8 + Game.combo * 2);
@@ -217,11 +288,16 @@ Enemy.damage = function (index) {
   var e = Enemy.list[index];
   if (!e || e.dead || e.stunned) { return; }
   var source = arguments[2];
-  if (e.shield && source && source.vx * (e.x - source.x) > 0) { return; }
+  if (e.shield && source) {
+    var shotApproaching = source.vx * (e.x - source.x) > 0;
+    var shieldFront = (e.dir > 0 && source.x > e.x) || (e.dir < 0 && source.x < e.x);
+    if (shotApproaching && shieldFront) { AudioFX.shield(); return; }
+  }
   if (e.armor > 0 && source) { e.armor--; Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 5); return; }
   Game.impact(3, 0);
   Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 4);
   e.health -= arguments[1] || 1;
+  e.regenTimer = 180;
   e.alerted = true;
   e.state = "run";
   e.timer = 0;
@@ -252,7 +328,7 @@ Enemy.collectPickups = function () {
           Game.levelTime = Math.max(60, Game.levelTime - 300);
           Game.showMessage("CURSED ARSENAL: ultimate weapon, but time burns away!");
         } else {
-          Game.showMessage(p.level > 3 ? "Ultimate spread gun acquired!" : (p.level > 2 ? "Ultra gun acquired!" : "Heavy gun acquired!"));
+          Game.showMessage(p.weaponType === "burst" ? "Burst rifle acquired!" : (p.weaponType === "boomerang" ? "Boomerang gun acquired!" : (p.level > 3 ? "Ultimate spread gun acquired!" : (p.level > 2 ? "Ultra gun acquired!" : "Heavy gun acquired!"))));
         }
       }
       AudioFX.pickup();
@@ -264,11 +340,28 @@ Enemy.collectPickups = function () {
   }
 };
 
+Enemy.collectShards = function () {
+  for (var i = Enemy.shards.length - 1; i >= 0; i--) {
+    var shard = Enemy.shards[i];
+    if (Player.x + CONFIG.PLAYER_SIZE > shard.x && Player.x < shard.x + shard.size &&
+        Player.y + CONFIG.PLAYER_SIZE > shard.y && Player.y < shard.y + shard.size) {
+      Game.score += 25;
+      Game.combo++;
+      Game.comboTimer = CONFIG.COMBO_TIMEOUT;
+      Game.showMessage("ENERGY SHARD +25");
+      for (var spark = 0; spark < 8; spark++) {
+        Enemy.effects.push({ x: shard.x + shard.size / 2, y: shard.y + shard.size / 2, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 20, color: "#5ce1e6", size: 4 });
+      }
+      Enemy.shards.splice(i, 1);
+    }
+  }
+};
+
 Enemy.firePlayerBullet = function () {
   var angle = Player.aimAngle;
   var centerX = Player.x + CONFIG.PLAYER_SIZE / 2;
   var centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
-  var angles = Player.weaponType === "shotgun" ? [angle - 0.28, angle - 0.14, angle, angle + 0.14, angle + 0.28] : [angle];
+  var angles = Player.weaponType === "shotgun" ? [angle - 0.28, angle - 0.14, angle, angle + 0.14, angle + 0.28] : (Player.weaponType === "burst" ? [angle - 0.1, angle, angle + 0.1] : [angle]);
   for (var shot = 0; shot < angles.length; shot++) {
     var shotAngle = angles[shot];
     Enemy.playerBullets.push({
@@ -280,7 +373,9 @@ Enemy.firePlayerBullet = function () {
       piercing: Player.weaponType === "laser" || Player.piercing,
       grenade: Player.weaponType === "grenade",
       homing: Player.weaponType === "homing",
-      bounces: 3,
+      boomerang: Player.weaponType === "boomerang",
+      bounces: Player.ricochet ? CONFIG.PLAYER_RICOCHET_BOUNCES : 0,
+      life: 0,
       hitTargets: []
     });
   }
@@ -289,6 +384,14 @@ Enemy.firePlayerBullet = function () {
 Enemy.updatePlayerBullets = function () {
   for (var b = Enemy.playerBullets.length - 1; b >= 0; b--) {
     var bullet = Enemy.playerBullets[b];
+    bullet.life++;
+    if (bullet.boomerang && bullet.life > 28) {
+      var returnAngle = Math.atan2(Player.y + CONFIG.PLAYER_SIZE / 2 - bullet.y, Player.x + CONFIG.PLAYER_SIZE / 2 - bullet.x);
+      var returnSpeed = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy) || CONFIG.PLAYER_BULLET_SPEED;
+      bullet.vx += (Math.cos(returnAngle) * returnSpeed - bullet.vx) * 0.12;
+      bullet.vy += (Math.sin(returnAngle) * returnSpeed - bullet.vy) * 0.12;
+      if (bullet.life > 100) { Enemy.playerBullets.splice(b, 1); continue; }
+    }
     if (bullet.homing) {
       var nearest = null, nearestDistance = Infinity;
       for (var targetIndex = 0; targetIndex < Enemy.list.length; targetIndex++) {
@@ -340,9 +443,12 @@ Enemy.updatePlayerBullets = function () {
         break;
       }
     }
-    if (hit || (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) && !bullet.grenade) ||
+    if (hit || (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) && !bullet.grenade && bullet.bounces <= 0) ||
         bullet.x < 0 || bullet.x > Level.pixelWidth()) {
       Enemy.playerBullets.splice(b, 1);
+    } else if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) && bullet.bounces > 0) {
+      bullet.vx = -bullet.vx; bullet.vy = -bullet.vy; bullet.bounces--;
+      bullet.x -= bullet.vx; bullet.y -= bullet.vy;
     } else if (bullet.grenade && Collide.hitsSolid(bullet.x, bullet.y, 8, 8)) {
       bullet.vy = -Math.abs(bullet.vy) * 0.85;
       bullet.vx *= 0.85;
@@ -360,6 +466,10 @@ Enemy.update = function () {
     var e = Enemy.list[i];
     if (e.dead) { continue; }
     if (e.burrowCooldown > 0) { e.burrowCooldown--; }
+    if (e.slamCooldown > 0) { e.slamCooldown--; }
+    if (e.regenTimer > 0) { e.regenTimer--; }
+    if (e.regenTimer === 0 && e.health < e.maxHealth && Game.frame % 45 === 0) { e.health++; }
+    if (e.support && e.healTimer > 0) { e.healTimer--; }
     if (e.burrowTimer > 0) {
       e.burrowTimer--;
       if (e.burrowTimer === 0) {
@@ -431,6 +541,12 @@ Enemy.update = function () {
       var dx = Player.x - e.x;
       var dy = Player.y - e.y;
       var distance = Math.sqrt(dx * dx + dy * dy);
+      if (e.charger && e.chargeTimer === 0 && e.onGround && e.slamCooldown === 0 && distance < 90) {
+        Enemy.enemySlam(e);
+        e.slamCooldown = 120;
+      }
+      if (e.support && e.healTimer === 0) { Enemy.healNearby(e); e.healTimer = 120; }
+      if (e.suicide && distance < 125) { Enemy.enemyExplosion(e); continue; }
       if (distance < 48) { Player.takeDamage("A melee swipe caught you."); }
       if (canSee && distance <= CONFIG.ENEMY_SHOOT_DISTANCE && e.shootTimer <= 0) {
         Enemy.shoot(e); e.shootTimer = Math.max(6, Math.floor(e.shootFrames / Game.enemySpeedScale * 0.75));
@@ -441,9 +557,16 @@ Enemy.update = function () {
   Enemy.updateBoss();
   Enemy.updatePlayerBullets();
   Enemy.collectPickups();
+  Enemy.collectShards();
   Enemy.updateHazards();
   for (var b = Enemy.bullets.length - 1; b >= 0; b--) {
     var bullet = Enemy.bullets[b];
+    if (bullet.homing) {
+      var aimAngle = Math.atan2(Player.y - bullet.y, Player.x - bullet.x);
+      var speed = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
+      bullet.vx += (Math.cos(aimAngle) * speed - bullet.vx) * 0.035;
+      bullet.vy += (Math.sin(aimAngle) * speed - bullet.vy) * 0.035;
+    }
     bullet.x += bullet.vx; bullet.y += bullet.vy;
     if (bullet.reflected && bullet.owner && !bullet.owner.dead && bullet.x + 8 > bullet.owner.x && bullet.x < bullet.owner.x + (bullet.owner === Enemy.boss ? CONFIG.BOSS_SIZE : CONFIG.ENEMY_SIZE) &&
         bullet.y + 8 > bullet.owner.y && bullet.y < bullet.owner.y + (bullet.owner === Enemy.boss ? CONFIG.BOSS_SIZE : CONFIG.ENEMY_SIZE)) {
@@ -453,7 +576,12 @@ Enemy.update = function () {
         Enemy.effects.push({ x: bullet.x, y: bullet.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 16, color: "#ffcf56", size: 4 });
       }
       Enemy.bullets.splice(b, 1);
-    } else if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) || bullet.x < 0 || bullet.x > Level.pixelWidth()) {
+    } else if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8)) {
+      if (bullet.bouncing && bullet.bounceCount > 0) {
+        bullet.vx = -bullet.vx; bullet.vy = -bullet.vy; bullet.bounceCount--;
+        bullet.x -= bullet.vx; bullet.y -= bullet.vy;
+      } else { Enemy.bullets.splice(b, 1); }
+    } else if (bullet.x < 0 || bullet.x > Level.pixelWidth()) {
       Enemy.bullets.splice(b, 1);
     } else if (!bullet.reflected && !Player.invincible && !Player.dashing && bullet.x + 8 > Player.x && bullet.x < Player.x + CONFIG.PLAYER_SIZE &&
                bullet.y + 8 > Player.y && bullet.y < Player.y + CONFIG.PLAYER_SIZE) {
@@ -497,34 +625,53 @@ Enemy.updateBoss = function () {
   }
   boss.attackTimer--;
   boss.spawnTimer--;
-  var enraged = boss.health <= CONFIG.BOSS_HEALTH / 2;
-  if (enraged && !boss.enraged) {
-    boss.enraged = true;
+  if (boss.teleportCooldown > 0) { boss.teleportCooldown--; }
+  var phase = boss.health <= CONFIG.BOSS_HEALTH / 3 ? 2 : (boss.health <= CONFIG.BOSS_HEALTH * 2 / 3 ? 1 : 0);
+  if (phase > boss.phase) {
+    boss.phase = phase;
+    boss.attackPhase = 0;
+    boss.attackTimer = 25;
     Game.bossFlicker = 28;
     Enemy.cinematic.flash = 14;
-    AudioFX.boss();
+    AudioFX.bossPhase();
+    Game.showMessage(phase === 1 ? "BOSS PHASE 2: THE ARENA SHIFTS!" : "BOSS PHASE 3: NO ESCAPE!");
+  }
+  var enraged = boss.phase > 0;
+  if (boss.phase === 2 && boss.teleportCooldown === 0 && Math.abs(Player.x - boss.x) < 180) {
+    var teleportX = Player.x < boss.x ? boss.arenaMaxX : boss.arenaMinX;
+    if (!Collide.hitsSolid(teleportX, boss.y, CONFIG.BOSS_SIZE, CONFIG.BOSS_SIZE)) {
+      boss.x = teleportX;
+      boss.teleportCooldown = 150;
+      Enemy.cinematic.flash = 8;
+      AudioFX.bossPhase();
+    }
   }
   if (enraged) {
     boss.attackTimer--;
     boss.spawnTimer--;
   }
   if (boss.attackTimer <= 0 && boss.onGround) {
-    if (boss.attackPhase === 0) { Enemy.bossSlam(); }
-    else if (boss.attackPhase === 1) { Enemy.bossSpikes(); }
-    else if (enraged) { Enemy.bossBulletHell(); }
-    else { Enemy.bossSlam(); }
-    boss.attackTimer = enraged ? Math.floor(CONFIG.BOSS_ATTACK_FRAMES * 0.55) : CONFIG.BOSS_ATTACK_FRAMES;
-    boss.attackPhase = (boss.attackPhase + 1) % (enraged ? 3 : 2);
+    if (boss.phase === 0) {
+      if (boss.attackPhase === 0) { Enemy.bossSlam(); } else { Enemy.bossSpikes(); }
+      boss.attackPhase = (boss.attackPhase + 1) % 2;
+    } else if (boss.phase === 1) {
+      if (boss.attackPhase === 0) { Enemy.bossBurst(); } else { Enemy.bossLaser(); }
+      boss.attackPhase = (boss.attackPhase + 1) % 2;
+    } else {
+      if (boss.attackPhase === 0) { Enemy.bossBulletHell(); } else { Enemy.bossSlam(); }
+      boss.attackPhase = (boss.attackPhase + 1) % 2;
+    }
+    boss.attackTimer = boss.phase > 0 ? Math.floor(CONFIG.BOSS_ATTACK_FRAMES * 0.55) : CONFIG.BOSS_ATTACK_FRAMES;
   }
   if (boss.spawnTimer <= 0) {
     Enemy.spawnMinion(boss.x - boss.dir * 100);
-    boss.spawnTimer = enraged ? Math.floor(CONFIG.BOSS_SPAWN_FRAMES * 0.6) : CONFIG.BOSS_SPAWN_FRAMES;
+    boss.spawnTimer = boss.phase > 0 ? Math.floor(CONFIG.BOSS_SPAWN_FRAMES * 0.6) : CONFIG.BOSS_SPAWN_FRAMES;
   }
   boss.floorTimer--;
   if (boss.floorTimer <= 0) {
     var floorX = boss.arenaMinX + Math.random() * (boss.arenaMaxX - boss.arenaMinX);
     Enemy.hazards.push({ type: "floorSpike", x: floorX, y: CONFIG.CANVAS_H - 120, warning: 35, life: 105 });
-    boss.floorTimer = enraged ? 70 : 120;
+    boss.floorTimer = boss.phase > 0 ? 70 : 120;
   }
   var overlaps = Player.x + CONFIG.PLAYER_SIZE > boss.x && Player.x < boss.x + CONFIG.BOSS_SIZE &&
     Player.y + CONFIG.PLAYER_SIZE > boss.y && Player.y < boss.y + CONFIG.BOSS_SIZE;
@@ -586,6 +733,12 @@ Enemy.updatePressure = function () {
       Enemy.spawnAmbush(ambush.x);
     }
   }
+  var nearCorner = Player.x < CONFIG.TILE * 2 || Player.x > Level.pixelWidth() - CONFIG.TILE * 2;
+  if (!Enemy.cornerAmbushUsed && Game.habits.corners > 120 && nearCorner) {
+    Enemy.cornerAmbushUsed = true;
+    Enemy.spawnAmbush(Player.x < Level.pixelWidth() / 2 ? Player.x + 120 : Player.x - 120);
+    Game.showMessage("THEY LEARNED YOUR HIDING SPOT!");
+  }
 };
 
 Enemy.bossSlam = function () {
@@ -613,6 +766,27 @@ Enemy.bossBulletHell = function () {
     var angle = Math.PI * 2 * i / 12;
     Enemy.bullets.push({ x: centerX - 4, y: centerY - 4, vx: Math.cos(angle) * CONFIG.BOSS_BULLET_SPEED, vy: Math.sin(angle) * CONFIG.BOSS_BULLET_SPEED, owner: Enemy.boss });
   }
+};
+
+Enemy.bossBurst = function () {
+  if (!Enemy.boss) { return; }
+  var boss = Enemy.boss;
+  var centerX = boss.x + CONFIG.BOSS_SIZE / 2, centerY = boss.y + CONFIG.BOSS_SIZE / 2;
+  var movementBias = Math.sign(Game.habits.right - Game.habits.left) * Math.min(45, Math.floor((Game.habits.right + Game.habits.left) / 120));
+  var targetY = Player.y + (Game.habits.jumps > Game.habits.shots / 2 ? 24 : 0);
+  var angle = Math.atan2(targetY - centerY, Player.x + movementBias - centerX);
+  for (var i = -2; i <= 2; i++) {
+    var shotAngle = angle + i * 0.16;
+    Enemy.bullets.push({ x: centerX - 4, y: centerY - 4, vx: Math.cos(shotAngle) * CONFIG.BOSS_BULLET_SPEED * 1.2, vy: Math.sin(shotAngle) * CONFIG.BOSS_BULLET_SPEED * 1.2, owner: boss });
+  }
+};
+
+Enemy.bossLaser = function () {
+  if (!Enemy.boss) { return; }
+  var boss = Enemy.boss;
+  var laserBias = Math.sign(Game.habits.right - Game.habits.left) * Math.min(45, Math.floor((Game.habits.right + Game.habits.left) / 120));
+  Enemy.hazards.push({ type: "laser", x: boss.x + CONFIG.BOSS_SIZE / 2, y: boss.y + CONFIG.BOSS_SIZE / 2,
+    targetX: Player.x + CONFIG.PLAYER_SIZE / 2 + laserBias, targetY: Player.y + CONFIG.PLAYER_SIZE / 2 + (Game.habits.recentJump > 0 ? 18 : 0), warning: 35, life: 55, owner: boss });
 };
 
 Enemy.reflectBullets = function (x, y, radius) {
@@ -644,6 +818,14 @@ Enemy.updateHazards = function () {
     if (hazard.warning > 0) { hazard.warning--; }
     hazard.life--;
     var active = hazard.type === "wave" || hazard.warning <= 0;
+    if (hazard.type === "laser" && active) {
+      var laserDx = hazard.targetX - hazard.x, laserDy = hazard.targetY - hazard.y;
+      var laserLength = Math.sqrt(laserDx * laserDx + laserDy * laserDy) || 1;
+      var laserProjection = ((Player.x + CONFIG.PLAYER_SIZE / 2 - hazard.x) * laserDx + (Player.y + CONFIG.PLAYER_SIZE / 2 - hazard.y) * laserDy) / laserLength;
+      var laserCross = Math.abs((Player.x + CONFIG.PLAYER_SIZE / 2 - hazard.x) * laserDy - (Player.y + CONFIG.PLAYER_SIZE / 2 - hazard.y) * laserDx) / laserLength;
+      if (laserProjection >= 0 && laserProjection <= laserLength && laserCross < CONFIG.PLAYER_SIZE / 2 + 4 && !Player.invincible && !Player.dashing) { Player.takeDamage("The laser burned you."); }
+      continue;
+    }
     var width = hazard.type === "wave" ? 18 : 32;
     var height = hazard.type === "wave" ? 12 : 40;
     if (active && hazard.x + width > Player.x && hazard.x < Player.x + CONFIG.PLAYER_SIZE &&
@@ -674,13 +856,15 @@ Enemy.dodgeBullets = function (e) {
     var bullet = Enemy.playerBullets[i];
     var dx = e.x + CONFIG.ENEMY_SIZE / 2 - (bullet.x + 4);
     var dy = e.y + CONFIG.ENEMY_SIZE / 2 - (bullet.y + 4);
-    var bulletComing = (bullet.vx > 0 && dx > 0) || (bullet.vx < 0 && dx < 0);
-    if (bulletComing && Math.abs(dx) < 180 && Math.abs(dy) < 42) {
+    var bulletComing = (bullet.vx > 0 && dx > 0) || (bullet.vx < 0 && dx < 0) || (bullet.vy > 0 && dy > 0) || (bullet.vy < 0 && dy < 0);
+    var lateralThreat = Math.abs(dy) < 42 && Math.abs(dx) < 180;
+    var verticalThreat = Math.abs(dx) < 42 && Math.abs(dy) < 180;
+    if (bulletComing && (lateralThreat || verticalThreat)) {
       if (e.onGround) {
         e.vy = -CONFIG.JUMP_POWER * 0.72;
         e.onGround = false;
       } else {
-        var dodgeDirection = bullet.vx > 0 ? -1 : 1;
+        var dodgeDirection = Math.abs(bullet.vx) > Math.abs(bullet.vy) ? (bullet.vx > 0 ? -1 : 1) : (Player.x < e.x ? 1 : -1);
         var dodgeX = e.x + dodgeDirection * e.speed * 2.5;
         if (!Collide.hitsSolid(dodgeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.x = dodgeX; }
       }
@@ -693,15 +877,50 @@ Enemy.dodgeBullets = function (e) {
 };
 
 Enemy.alertOthers = function (spotter) {
+  var flankIndex = 0;
   for (var i = 0; i < Enemy.list.length; i++) {
     var e = Enemy.list[i];
-    if (e !== spotter && e.state !== "run") { e.state = "run"; e.timer = 0; e.alerted = true; }
+    if (e !== spotter && e.state !== "run") {
+      e.state = "run"; e.timer = 0; e.alerted = true;
+      if (flankIndex % 2 === 0) { e.flanker = true; e.flankSide = flankIndex % 4 === 0 ? -1 : 1; }
+      flankIndex++;
+    }
   }
+  if (!spotter.backupCalled && Enemy.list.length < 12) {
+    spotter.backupCalled = true;
+    Enemy.spawnMinion(spotter.x + (spotter.x < Player.x ? -80 : 80));
+    Game.showMessage("BACKUP DROPPED IN!");
+  }
+};
+
+Enemy.enemySlam = function (e) {
+  var y = e.y + CONFIG.ENEMY_SIZE - 8;
+  Enemy.hazards.push({ type: "wave", x: e.x + CONFIG.ENEMY_SIZE / 2, y: y, vx: -3.5, life: 65 });
+  Enemy.hazards.push({ type: "wave", x: e.x + CONFIG.ENEMY_SIZE / 2, y: y, vx: 3.5, life: 65 });
+  Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 10);
+};
+
+Enemy.healNearby = function (e) {
+  for (var i = 0; i < Enemy.list.length; i++) {
+    var ally = Enemy.list[i];
+    var dx = ally.x - e.x, dy = ally.y - e.y;
+    if (ally !== e && !ally.dead && dx * dx + dy * dy < 150 * 150) { ally.health = Math.min(ally.maxHealth, ally.health + 1); }
+  }
+};
+
+Enemy.enemyExplosion = function (e) {
+  var index = Enemy.list.indexOf(e);
+  if (index < 0) { return; }
+  if (Math.abs(Player.x - e.x) < 90 && Math.abs(Player.y - e.y) < 70) { Player.takeDamage("The bomber exploded."); }
+  Enemy.kill(index, false);
 };
 Enemy.shoot = function (e) {
   if (!e || e.dead || e.stunned) { return; }
   var ex = e.x + CONFIG.ENEMY_SIZE / 2, ey = e.y + CONFIG.ENEMY_SIZE / 2;
-  var px = Player.x + CONFIG.PLAYER_SIZE / 2 + Player.vx * CONFIG.LEAD_FRAMES, py = Player.y + CONFIG.PLAYER_SIZE / 2;
+  var movementBias = Math.sign(Game.habits.right - Game.habits.left) * Math.min(45, Math.floor((Game.habits.right + Game.habits.left) / 120));
+  var learnedJumpBias = Game.habits.jumps > Game.habits.shots / 2 ? 24 : 0;
+  var px = Player.x + CONFIG.PLAYER_SIZE / 2 + Player.vx * CONFIG.LEAD_FRAMES + movementBias;
+  var py = Player.y + CONFIG.PLAYER_SIZE / 2 + learnedJumpBias + (Game.habits.recentJump > 0 ? 18 : 0);
   var dx = px - ex, dy = py - ey, dist = Math.sqrt(dx * dx + dy * dy);
   if (dist === 0) { return; }
   if (e.laser) {
@@ -726,7 +945,11 @@ Enemy.draw = function () {
   }
   for (var h = 0; h < Enemy.hazards.length; h++) {
     var hazard = Enemy.hazards[h];
-    if (hazard.type === "wave") {
+    if (hazard.type === "laser") {
+      ctx.strokeStyle = hazard.warning > 0 ? "rgba(239, 108, 240, 0.45)" : "#ef6cf0";
+      ctx.lineWidth = hazard.warning > 0 ? 2 : 5;
+      ctx.beginPath(); ctx.moveTo(hazard.x, hazard.y); ctx.lineTo(hazard.targetX, hazard.targetY); ctx.stroke();
+    } else if (hazard.type === "wave") {
       ctx.fillStyle = "#000000";
       ctx.fillRect(hazard.x, hazard.y, 18, 12);
     } else {
@@ -750,6 +973,20 @@ Enemy.draw = function () {
     ctx.fillRect(body.x + 8, body.y - 2, 5, 3);
     ctx.fillRect(body.x + body.width - 14, body.y + 2, 4, 3);
   }
+  for (var shardIndex = 0; shardIndex < Enemy.shards.length; shardIndex++) {
+    var shard = Enemy.shards[shardIndex];
+    var shardPulse = 1 + Math.sin(Game.frame / 8 + shard.x) * 0.18;
+    ctx.save();
+    ctx.translate(shard.x + shard.size / 2, shard.y + shard.size / 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.scale(shardPulse, shardPulse);
+    ctx.fillStyle = "#5ce1e6";
+    ctx.fillRect(-shard.size / 2, -shard.size / 2, shard.size, shard.size);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-shard.size / 2, -shard.size / 2, shard.size, shard.size);
+    ctx.restore();
+  }
   for (var fx = 0; fx < Enemy.effects.length; fx++) {
     var particle = Enemy.effects[fx];
     ctx.fillStyle = particle.color || "#d94b32";
@@ -760,7 +997,7 @@ Enemy.draw = function () {
   ctx.globalAlpha = 1;
   if (Enemy.boss) {
     var boss = Enemy.boss;
-    var enraged = boss.health <= CONFIG.BOSS_HEALTH / 2;
+    var enraged = boss.phase > 0;
     ctx.save();
     ctx.globalAlpha = 0.18 + (Math.sin(Date.now() / 120) + 1) * 0.08;
     ctx.fillStyle = enraged ? "#d94b32" : "#ffcf56";
@@ -794,6 +1031,14 @@ Enemy.draw = function () {
       ctx.beginPath();
       ctx.moveTo(e.x + 4, e.y + 10); ctx.lineTo(e.x - 7, e.y + 4);
       ctx.moveTo(e.x + CONFIG.ENEMY_SIZE - 4, e.y + 10); ctx.lineTo(e.x + CONFIG.ENEMY_SIZE + 7, e.y + 4);
+      ctx.stroke();
+    }
+    if (e.shield) {
+      ctx.strokeStyle = "#6b89d8";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      var shieldAngle = e.dir > 0 ? 0 : Math.PI;
+      ctx.arc(e.x + CONFIG.ENEMY_SIZE / 2, e.y + CONFIG.ENEMY_SIZE / 2, CONFIG.ENEMY_SIZE / 2 + 6, shieldAngle - 1.05, shieldAngle + 1.05);
       ctx.stroke();
     }
     if (e.health < e.maxHealth) {

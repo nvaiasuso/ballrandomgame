@@ -49,6 +49,10 @@ var AudioFX = {
   dash: function () { AudioFX.tone(180, 0.16, "sawtooth", 0.12); },
   shoot: function () { AudioFX.tone(260, 0.04, "square", 0.06); },
   hit: function () { AudioFX.tone(90, 0.16, "sawtooth", 0.14); },
+  death: function () { AudioFX.tone(55, 0.42, "sawtooth", 0.18); AudioFX.tone(38, 0.55, "triangle", 0.1); },
+  stomp: function () { AudioFX.tone(120, 0.12, "square", 0.12); AudioFX.tone(70, 0.18, "sawtooth", 0.1); },
+  shield: function () { AudioFX.tone(720, 0.06, "square", 0.08); },
+  bossPhase: function () { AudioFX.tone(90, 0.18, "sawtooth", 0.16); AudioFX.tone(180, 0.32, "triangle", 0.12); },
   defeat: function () { AudioFX.tone(70, 0.22, "sawtooth", 0.15); },
   pickup: function () { AudioFX.tone(660, 0.16, "triangle", 0.1); },
   boss: function () { AudioFX.tone(48, 0.5, "sawtooth", 0.16); }

@@ -32,10 +32,16 @@ var Game = {
   frame: 0,
   keepPerks: false,
   pendingLevel: 0,
-  upgradeChoices: []
+  upgradeChoices: [],
+  transitioning: false,
+  roundNumber: 0,
+  habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };  
   
 Game.startLevel = function (levelNumber) {  
+  Game.transitioning = false;
+  Game.roundNumber++;
+  if (levelNumber === CONFIG.START_LEVEL) { Game.habits = { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }; }
   Game.levelNumber = levelNumber;  
   Game.randomMode = false;
   Game.endless = false;
@@ -55,6 +61,8 @@ Game.startLevel = function (levelNumber) {
 };  
 
 Game.startRandomLevel = function () {
+  Game.transitioning = false;
+  Game.roundNumber++;
   Game.randomMode = true;
   Game.endless = false;
   Game.gambleUsed = false;
@@ -88,6 +96,8 @@ Game.startEndless = function (seed) {
 };
 
 Game.startEndlessWave = function () {
+  Game.transitioning = false;
+  Game.roundNumber++;
   Level.buildRandom((Game.endlessSeed + Game.endlessWave * 7919) >>> 0);
   Level.name = "ENDLESS WAVE " + (Game.endlessWave + 1);
   Enemy.reset();
@@ -114,6 +124,16 @@ Game.finishEndlessWave = function () {
 Game.showMessage = function (text) {  
   document.getElementById("message").textContent = text;  
 };  
+
+Game.togglePause = function () {
+  if (Game.mode === "playing") {
+    Game.mode = "paused";
+    Game.showMessage("PAUSED - press P or Resume to continue.");
+  } else if (Game.mode === "paused") {
+    Game.mode = "playing";
+    Game.showMessage("Back in action.");
+  }
+};
 
 Game.resetIntensity = function () {
   Game.hitstop = 0; Game.timeScale = 1; Game.slowMoTimer = 0; Game.simAccumulator = 0;
@@ -167,6 +187,9 @@ Game.resolveGamble = function () {
     { name: "QUICKSTEP", text: "Buff: your roll speed surges.", apply: function () { Player.speedMultiplier = 1.5; } },
     { name: "SKYBOUND", text: "Buff: your jumps reach the heavens.", apply: function () { Player.jumpMultiplier = 1.45; } },
     { name: "OVERCHARGE", text: "Buff: your weapon damage doubles.", apply: function () { Player.damageMultiplier = 2; } },
+    { name: "RICOCHET", text: "Buff: your bullets bounce off walls.", apply: function () { Player.ricochet = true; } },
+    { name: "TIME BURST", text: "Buff: the world slows while you stay fast.", apply: function () { Player.speedMultiplier = 1.25; Game.timeScale = 0.7; } },
+    { name: "ADAPTIVE AIM", text: "Your shots lead moving targets more aggressively.", apply: function () { Player.damageMultiplier = 1.25; Player.adaptiveAim = true; } },
     { name: "SECOND WIND", text: "Buff: your health expands and refills.", apply: function () { Player.maxHealth += 2; Player.health = Player.maxHealth; } },
     { name: "PHASE SHIFT", text: "Buff: your body becomes untouchable.", apply: function () { Player.invincible = true; Player.invincibleTimer = CONFIG.INVINCIBILITY_TIME; } },
     { name: "LEAD BOOTS", text: "Debuff: gravity pulls twice as hard.", apply: function () { Player.gravityMultiplier = 2; } },
@@ -185,8 +208,10 @@ Game.resolveGamble = function () {
 };
 
 Game.die = function (reason) {
+  if (Player.invincible) { return; }
   Game.mode = "dead";
   AudioFX.hit();
+  AudioFX.death();
   Game.showMessage(reason + " Press R to try again.");
 };
   
@@ -206,6 +231,17 @@ Game.update = function () {
     if (Game.randomMode) { Game.startRandomLevel(); }
     else { Game.startLevel(Game.levelNumber); }
     return;
+  }
+  if (Input.pause) {
+    Input.pause = false;
+    Game.togglePause();
+    return;
+  }
+  if (Input.invincibility) {
+    Input.invincibility = false;
+    Player.invincible = !Player.invincible;
+    Player.invincibleTimer = Player.invincible ? 999999 : 0;
+    Game.showMessage(Player.invincible ? "INVINCIBILITY ON - press I to disable." : "INVINCIBILITY OFF.");
   }
   if (Input.adminRandom) {
     Input.adminRandom = false;
@@ -250,8 +286,11 @@ Game.update = function () {
   Game.levelTime--;
   Level.updateDynamic();
   if (Game.levelTime <= 0) {
-    Game.die("You ran out of time.");
-    return;
+    if (!Player.invincible) {
+      Game.die("You ran out of time.");
+      return;
+    }
+    Game.levelTime = 1;
   }
   if (Game.comboTimer > 0) { Game.comboTimer--; }
   if (Game.comboTimer === 0) { Game.combo = 0; }
@@ -274,7 +313,8 @@ Game.update = function () {
     return;  
   }  
   
-  if (Player.hasWon()) {  
+  if (!Game.transitioning && Player.hasWon()) {
+    Game.transitioning = true;
     if (Game.endless) {
       Game.finishEndlessWave();
     } else if (Game.randomMode) {

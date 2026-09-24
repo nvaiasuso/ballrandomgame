@@ -17,7 +17,9 @@ var Input = {
   adminRandom: false,
   gamble: false,
   dash: false,
-  endless: false
+  endless: false,
+  pause: false,
+  invincibility: false
 };
 
 Input.updateMouse = function (event) {
@@ -62,6 +64,14 @@ window.addEventListener("keydown", function (event) {
   }
   if (!event.repeat && !event.shiftKey && (event.key === "e" || event.key === "E")) {
     Input.endless = true;
+    event.preventDefault();
+  }
+  if (!event.repeat && !event.shiftKey && (event.key === "p" || event.key === "P")) {
+    Input.pause = true;
+    event.preventDefault();
+  }
+  if (!event.repeat && !event.shiftKey && (event.key === "i" || event.key === "I")) {
+    Input.invincibility = true;
     event.preventDefault();
   }
   if (event.key === "Shift") { Input.dash = true; event.preventDefault(); }

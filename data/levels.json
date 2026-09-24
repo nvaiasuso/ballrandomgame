@@ -76,6 +76,14 @@
     {
       "name": "Level 18 - Cursed Arsenal",
       "pieces": ["start", "risk_armory", "splitter_hall", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 19 - Phantom Chase",
+      "pieces": ["start", "dark_run", "enemy_line", "moving_platform", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 20 - Shatterpoint",
+      "pieces": ["start", "hard_gap3", "turret_room", "risk_armory", "charger_run", "boss_arena", "finish"]
     }
   ]
 }

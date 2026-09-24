@@ -8,7 +8,7 @@ var Player = {
   speedMultiplier: 1, jumpMultiplier: 1, gravityMultiplier: 1, damageMultiplier: 1, gambleEffect: "",
   health: CONFIG.PLAYER_HEALTH, maxHealth: CONFIG.PLAYER_HEALTH, hitTimer: 0,
   dashTimer: 0, dashCooldown: 0, dashDirection: 1, dashing: false,
-  scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false
+  scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false, ricochet: false, adaptiveAim: false
 };
 
 Player.reset = function () {
@@ -18,7 +18,7 @@ Player.reset = function () {
   Player.invincible = false; Player.invincibleTimer = 0; Player.shootCooldown = 0;
   Player.speedMultiplier = 1; Player.jumpMultiplier = 1; Player.gravityMultiplier = 1;
   Player.damageMultiplier = 1; Player.gambleEffect = "";
-  Player.shieldMultiplier = 1; Player.piercing = false;
+  Player.shieldMultiplier = 1; Player.piercing = false; Player.ricochet = false; Player.adaptiveAim = false;
   for (var perkIndex = 0; perkIndex < Player.perks.length; perkIndex++) {
     if (Player.perks[perkIndex] === "speed") { Player.speedMultiplier *= 1.12; }
     if (Player.perks[perkIndex] === "jump") { Player.jumpMultiplier *= 1.15; }
@@ -49,6 +49,10 @@ Player.update = function () {
   Player.vx = 0;
   if (Input.left) { Player.vx = -CONFIG.MOVE_SPEED * Player.speedMultiplier; }
   if (Input.right) { Player.vx = CONFIG.MOVE_SPEED * Player.speedMultiplier; }
+  if (Input.left) { Game.habits.left++; }
+  if (Input.right) { Game.habits.right++; }
+  if (Input.jump && Player.onGround) { Game.habits.jumps++; Game.habits.recentJump = 35; }
+  if (Game.habits.recentJump > 0) { Game.habits.recentJump--; }
   if (Input.jump && Player.onGround) { Player.vy = -CONFIG.JUMP_POWER * Player.jumpMultiplier; Player.onGround = false; Player.scaleX = 1.2; Player.scaleY = 0.78; AudioFX.jump(); }
   if (Player.dashCooldown > 0) { Player.dashCooldown--; }
   if (Player.hitTimer > 0) { Player.hitTimer--; }
@@ -56,6 +60,7 @@ Player.update = function () {
     Player.dashDirection = Input.left ? -1 : (Input.right ? 1 : (Math.cos(Player.aimAngle) < 0 ? -1 : 1));
     Player.dashTimer = CONFIG.DASH_FRAMES;
     Player.dashCooldown = CONFIG.DASH_COOLDOWN;
+    Game.habits.dashes++;
     Input.dash = false;
     AudioFX.dash();
   }
@@ -93,6 +98,7 @@ Player.update = function () {
   Player.scaleX += (1 - Player.scaleX) * 0.18;
   Player.scaleY += (1 - Player.scaleY) * 0.18;
   if (Player.x < 0) { Player.x = 0; }
+  if ((Player.x < CONFIG.TILE * 2 || Player.x > Level.pixelWidth() - CONFIG.TILE * 2) && Math.abs(Player.vx) < 0.2) { Game.habits.corners++; }
 
   if (Player.shootCooldown > 0) { Player.shootCooldown--; }
   if (Player.muzzleFlash > 0) { Player.muzzleFlash--; }
@@ -105,13 +111,22 @@ Player.update = function () {
     if (Player.invincibleTimer === 0) { Player.invincible = false; }
   }
   if (Player.hasGun && Player.ammo > 0 && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
-    Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Player.shootCooldown = Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "grenade" ? 28 : CONFIG.PLAYER_SHOOT_COOLDOWN));
+    Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Game.habits.shots++; Player.shootCooldown = Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "burst" ? 30 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "grenade" ? 28 : CONFIG.PLAYER_SHOOT_COOLDOWN)));
     if (Player.ammo === 0) { Player.hasGun = false; Player.gunLevel = 0; Game.showMessage("CLICK. Empty weapon."); }
   }
 };
 
 Player.isDead = function () {
-  if (Player.y > CONFIG.CANVAS_H + 200) { return true; }
+  if (Player.y > CONFIG.CANVAS_H + 200) {
+    if (Player.invincible) {
+      Player.x = Math.max(0, Level.startX);
+      Player.y = Level.startY;
+      Player.vx = 0;
+      Player.vy = 0;
+      return false;
+    }
+    return true;
+  }
   if (!Player.invincible && !Player.dashing &&
       (Collide.hitsSpike(Player.x, Player.y, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE) ||
        Collide.hitsLava(Player.x, Player.y, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE))) {
@@ -123,8 +138,9 @@ Player.hasWon = function () {
   if (Enemy.boss || Enemy.list.length > 0) { return false; }
   for (var i = 0; i < Level.finishTiles.length; i++) {
     var finish = Level.finishTiles[i];
-    if (Player.x + CONFIG.PLAYER_SIZE > finish.x && Player.x < finish.x + CONFIG.TILE &&
-        Player.y + CONFIG.PLAYER_SIZE > finish.y && Player.y < finish.y + CONFIG.TILE) { return true; }
+    var flagFootprintY = finish.y + CONFIG.TILE;
+    if (Player.onGround && Player.x + CONFIG.PLAYER_SIZE > finish.x + 8 && Player.x < finish.x + CONFIG.TILE - 8 &&
+      Player.y + CONFIG.PLAYER_SIZE >= flagFootprintY - 2 && Player.y + CONFIG.PLAYER_SIZE <= flagFootprintY + 8) { return true; }
   }
   return false;
 };

@@ -82,6 +82,7 @@ Draw.hud = function () {
   var healthHud = document.getElementById("health-hud");
   var dashHud = document.getElementById("dash-hud");
   var enemyHud = document.getElementById("enemy-hud");
+  var pauseButton = document.getElementById("pause-button");
   if (levelHud) { levelHud.textContent = "LEVEL " + (Game.levelNumber + 1) + " · " + Level.name; }
   if (timerHud) { timerHud.textContent = "TIME " + Math.max(0, Math.ceil(Game.levelTime / 60)); }
   if (weaponHud) {
@@ -90,6 +91,8 @@ Draw.hud = function () {
     else if (Player.weaponType === "laser") { weaponText = "WEAPON: LASER " + Player.ammo; }
     else if (Player.weaponType === "grenade") { weaponText = "WEAPON: GRENADE " + Player.ammo; }
     else if (Player.weaponType === "homing") { weaponText = "WEAPON: HOMING " + Player.ammo; }
+    else if (Player.weaponType === "burst") { weaponText = "WEAPON: BURST " + Player.ammo; }
+    else if (Player.weaponType === "boomerang") { weaponText = "WEAPON: BOOMERANG " + Player.ammo; }
     else if (Player.gunLevel > 2) { weaponText = "WEAPON: ULTRA " + Math.ceil(Player.weaponTimer / 60) + "s"; }
     else if (Player.gunLevel > 1) { weaponText = "WEAPON: HEAVY " + Math.ceil(Player.weaponTimer / 60) + "s"; }
     else if (Player.hasGun) { weaponText = "WEAPON: SIDEARM " + Player.ammo; }
@@ -101,6 +104,7 @@ Draw.hud = function () {
   if (comboHud) { comboHud.textContent = Game.combo > 1 ? "COMBO x" + Game.combo : "COMBO 0"; }
   if (scoreHud) { scoreHud.textContent = "SCORE " + (Game.score || 0) + " · BEST " + (Game.highScore || 0); }
   if (enemyHud) { enemyHud.textContent = Enemy.boss ? "BOSS " + Enemy.boss.health + "/" + CONFIG.BOSS_HEALTH : "ENEMIES " + Enemy.list.length; }
+  if (pauseButton) { pauseButton.textContent = Game.mode === "paused" ? "RESUME [P]" : "PAUSE [P]"; }
   var gambleButton = document.getElementById("gamble-button");
   if (gambleButton) { gambleButton.disabled = Game.gambleUsed || Game.mode !== "playing"; }
   if (Player.gambleEffect && weaponHud) { weaponHud.textContent += " · " + Player.gambleEffect; }
@@ -113,6 +117,18 @@ Draw.hud = function () {
     ctx.fillText(Game.mode === "dead" ? "YOU DIED" : "YOU WIN", CONFIG.CANVAS_W / 2, 170);
     ctx.font = "18px monospace";
     ctx.fillText("Press R to restart", CONFIG.CANVAS_W / 2, 215);
+    ctx.textAlign = "left";
+  }
+  if (Game.mode === "paused") {
+    ctx.fillStyle = "rgba(24, 33, 43, 0.72)";
+    ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
+    ctx.fillStyle = "#ffcf56";
+    ctx.textAlign = "center";
+    ctx.font = "bold 34px monospace";
+    ctx.fillText("PAUSED", CONFIG.CANVAS_W / 2, 175);
+    ctx.font = "14px monospace";
+    ctx.fillStyle = "#fffdf8";
+    ctx.fillText("Press P or Resume to continue", CONFIG.CANVAS_W / 2, 205);
     ctx.textAlign = "left";
   }
   if (Enemy.cinematic.banner > 0) {
