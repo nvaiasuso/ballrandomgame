@@ -42,8 +42,23 @@ Player.takeDamage = function (reason) {
   if (Player.health <= 0) { Game.die(reason); }
 };
 
+Player.unstick = function () {
+  var size = CONFIG.PLAYER_SIZE;
+  if (!Collide.hitsSolid(Player.x, Player.y, size, size)) { return; }
+  for (var up = 0; up < CONFIG.TILE * 2; up++) {
+    Player.y--;
+    if (!Collide.hitsSolid(Player.x, Player.y, size, size)) { Player.vy = 0; return; }
+  }
+  for (var side = 1; side <= CONFIG.TILE * 2; side++) {
+    var direction = side % 2 === 0 ? 1 : -1;
+    var escapeX = Player.x + direction * side;
+    if (!Collide.hitsSolid(escapeX, Player.y, size, size)) { Player.x = escapeX; Player.vx = 0; Player.vy = 0; return; }
+  }
+};
+
 Player.update = function () {
   var size = CONFIG.PLAYER_SIZE;
+  Player.unstick();
   var wasOnGround = Player.onGround;
   var centerX = Player.x + size / 2, centerY = Player.y + size / 2;
   var aimX = Input.mouseX - centerX, aimY = Input.mouseY - centerY;

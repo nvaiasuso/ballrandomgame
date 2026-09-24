@@ -222,7 +222,9 @@ Enemy.checkPlayerContact = function () {
     if (e.stunned) { continue; }
     var overlaps = Player.x + CONFIG.PLAYER_SIZE > e.x && Player.x < e.x + CONFIG.ENEMY_SIZE &&
       Player.y + CONFIG.PLAYER_SIZE > e.y && Player.y < e.y + CONFIG.ENEMY_SIZE;
-    if (overlaps && Player.vy >= 0 && Player.y + CONFIG.PLAYER_SIZE - e.y < CONFIG.TILE / 2) {
+    var landingY = e.y - CONFIG.PLAYER_SIZE;
+    var landingBlocked = Collide.hitsSolid(Player.x, landingY, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE);
+    if (overlaps && !Player.dashing && Player.vy >= 0 && Player.y + CONFIG.PLAYER_SIZE - e.y < CONFIG.TILE / 2 && !landingBlocked) {
       Enemy.reflectBullets(Player.x + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, 58);
       Player.y = e.y - CONFIG.PLAYER_SIZE;
       Player.vy = -CONFIG.JUMP_POWER * 0.55;
@@ -244,11 +246,12 @@ Enemy.kill = function (index, stomped) {
   var weaponType = dropWeapons[Math.floor(Math.random() * dropWeapons.length)];
   if (e.type === "v" || e.type === "r") { level = 2; }
   if (e.splitter) { level = 2; }
-  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: 1, weaponType: weaponType });
+  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: 1, weaponType: weaponType, life: 600 });
   if (Game.combo > 0 && Game.combo % 3 === 0) {
-    Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 + 16, y: e.y + 4, size: 16, type: "weaponShard" });
+    Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 + 16, y: e.y + 4, size: 16, type: "weaponShard", life: 600 });
   }
   Enemy.deadBodies.push({ x: e.x - 4, y: e.y + CONFIG.ENEMY_SIZE - 11, width: CONFIG.ENEMY_SIZE + 8, color: e.color || "#ffffff", dir: e.dir });
+  if (Enemy.deadBodies.length > 40) { Enemy.deadBodies.shift(); }
   for (var burst = 0; burst < 28; burst++) {
     Enemy.effects.push({ x: e.x + CONFIG.ENEMY_SIZE / 2, y: e.y + CONFIG.ENEMY_SIZE / 2, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.8) * 10, life: 34, color: "#d94b32", size: 6 });
   }
@@ -350,6 +353,14 @@ Enemy.collectPickups = function () {
       }
       Enemy.pickups.splice(i, 1);
     }
+  }
+};
+
+Enemy.updatePickups = function () {
+  for (var i = Enemy.pickups.length - 1; i >= 0; i--) {
+    if (Enemy.pickups[i].life === undefined) { continue; }
+    Enemy.pickups[i].life--;
+    if (Enemy.pickups[i].life <= 0) { Enemy.pickups.splice(i, 1); }
   }
 };
 
@@ -458,7 +469,7 @@ Enemy.updatePlayerBullets = function () {
       }
     }
     if (hit || (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) && !bullet.grenade && bullet.bounces <= 0) ||
-        bullet.x < 0 || bullet.x > Level.pixelWidth()) {
+      bullet.x < 0 || bullet.x > Level.pixelWidth() || bullet.y < -CONFIG.CANVAS_H || bullet.y > CONFIG.CANVAS_H * 2) {
       Enemy.playerBullets.splice(b, 1);
     } else if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8) && bullet.bounces > 0) {
       bullet.vx = -bullet.vx; bullet.vy = -bullet.vy; bullet.bounces--;
@@ -575,6 +586,7 @@ Enemy.update = function () {
 
   Enemy.updateBoss();
   Enemy.updatePlayerBullets();
+  Enemy.updatePickups();
   Enemy.collectPickups();
   Enemy.collectShards();
   Enemy.updateHazards();
@@ -600,7 +612,7 @@ Enemy.update = function () {
         bullet.vx = -bullet.vx; bullet.vy = -bullet.vy; bullet.bounceCount--;
         bullet.x -= bullet.vx; bullet.y -= bullet.vy;
       } else { Enemy.bullets.splice(b, 1); }
-    } else if (bullet.x < 0 || bullet.x > Level.pixelWidth()) {
+    } else if (bullet.x < 0 || bullet.x > Level.pixelWidth() || bullet.y < -CONFIG.CANVAS_H || bullet.y > CONFIG.CANVAS_H * 2) {
       Enemy.bullets.splice(b, 1);
     } else if (!bullet.reflected && !Player.invincible && !Player.dashing && bullet.x + 8 > Player.x && bullet.x < Player.x + CONFIG.PLAYER_SIZE &&
                bullet.y + 8 > Player.y && bullet.y < Player.y + CONFIG.PLAYER_SIZE) {
@@ -672,10 +684,6 @@ Enemy.updateBoss = function () {
       AudioFX.bossPhase();
     }
   }
-  if (enraged) {
-    boss.attackTimer--;
-    boss.spawnTimer--;
-  }
   if (boss.attackTimer <= 0 && boss.onGround) {
     if (boss.phase === 0) {
       if (boss.attackPhase === 0) { Enemy.bossSlam(); } else { Enemy.bossSpikes(); }
@@ -726,7 +734,9 @@ Enemy.spawnMinion = function (x) {
     x: x, y: 0, vy: 0, state: "run", timer: 0, dir: 1,
     onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
     maxHealth: type.health, speed: type.speed, shootFrames: type.shootFrames,
-    bulletSpeed: type.bulletSpeed, type: "s", color: type.color, flying: false, stunned: true, stunTimer: 55
+    bulletSpeed: type.bulletSpeed, type: "s", color: type.color, flying: false, stunned: true, stunTimer: 55,
+    charger: false, support: false, suicide: false, glide: false, slamCooldown: 0, healTimer: 90, regenTimer: 0,
+    pathDirection: 0, pathTimer: 0
   });
 };
 
@@ -741,7 +751,9 @@ Enemy.spawnAmbush = function (x) {
       onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
       maxHealth: type.health, speed: type.speed, shootFrames: type.shootFrames,
       bulletSpeed: type.bulletSpeed, type: typeKey, color: type.color, flying: !!type.flying,
-      turret: !!type.turret, charger: !!type.charger, splitter: !!type.splitter, chargeTimer: 20, stunned: true, stunTimer: 55 });
+      turret: !!type.turret, charger: !!type.charger, splitter: !!type.splitter, support: !!type.support,
+      suicide: !!type.suicide, glide: !!type.glide, chargeTimer: 20, slamCooldown: 0, healTimer: 90, regenTimer: 0,
+      pathDirection: 0, pathTimer: 0, stunned: true, stunTimer: 55 });
   }
   Enemy.cinematic.flash = 5;
   Game.showMessage("AMBUSH!");
@@ -834,7 +846,8 @@ Enemy.spawnSplitterMinion = function (x, y) {
     onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
     maxHealth: type.health, speed: type.speed, shootFrames: type.shootFrames,
     bulletSpeed: type.bulletSpeed, type: "s", color: type.color, flying: false,
-    turret: false, charger: false, splitter: false, chargeTimer: 0 });
+    turret: false, charger: false, splitter: false, support: false, suicide: false, glide: false,
+    chargeTimer: 0, slamCooldown: 0, healTimer: 90, regenTimer: 0, pathDirection: 0, pathTimer: 0 });
 };
 
 Enemy.updateHazards = function () {
@@ -850,6 +863,7 @@ Enemy.updateHazards = function () {
       var laserProjection = ((Player.x + CONFIG.PLAYER_SIZE / 2 - hazard.x) * laserDx + (Player.y + CONFIG.PLAYER_SIZE / 2 - hazard.y) * laserDy) / laserLength;
       var laserCross = Math.abs((Player.x + CONFIG.PLAYER_SIZE / 2 - hazard.x) * laserDy - (Player.y + CONFIG.PLAYER_SIZE / 2 - hazard.y) * laserDx) / laserLength;
       if (laserProjection >= 0 && laserProjection <= laserLength && laserCross < CONFIG.PLAYER_SIZE / 2 + 4 && !Player.invincible && !Player.dashing) { Player.takeDamage("The laser burned you."); }
+      if (hazard.life <= 0) { Enemy.hazards.splice(i, 1); }
       continue;
     }
     var width = hazard.type === "wave" ? 18 : 32;

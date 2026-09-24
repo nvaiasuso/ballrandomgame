@@ -158,7 +158,8 @@ Game.impact = function (hitstop, slowMo) {
 
 Game.registerKill = function (isBoss) {
   Game.combo++; Game.comboTimer = CONFIG.COMBO_TIMEOUT;
-  Game.impact(CONFIG.HITSTOP_FRAMES, isBoss ? CONFIG.BOSS_SLOWMO_FRAMES : CONFIG.KILL_SLOWMO_FRAMES);
+  var slowMo = Game.slowMoTimer === 0 ? (isBoss ? CONFIG.BOSS_SLOWMO_FRAMES : CONFIG.KILL_SLOWMO_FRAMES) : 0;
+  Game.impact(CONFIG.HITSTOP_FRAMES, slowMo);
 };
 
 Game.startChaos = function () {
@@ -373,9 +374,15 @@ Game.update = function () {
   
 // --- THE LOOP ITSELF --------------------------------------------------  
 Game.loop = function () {  
-  Game.update();  
-  Draw.updateCamera();  
-  Input.refreshMouseWorld();
-  Draw.everything();  
-  window.requestAnimationFrame(Game.loop);  
+  try {
+    Game.update();
+    Draw.updateCamera();
+    Input.refreshMouseWorld();
+    Draw.everything();
+  } catch (error) {
+    console.error("Game frame recovered from an error:", error);
+    if (Game.showMessage) { Game.showMessage("A frame recovered. Press R if the game looks wrong."); }
+  } finally {
+    window.requestAnimationFrame(Game.loop);
+  }
 };  

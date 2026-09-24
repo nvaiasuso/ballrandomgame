@@ -66,11 +66,16 @@ Level.buildPieces = function (name, pieceNames) {
 
     if (!piece) {
       console.error("No piece named '" + pieceName + "' in data/pieces.json");
-      piece = Level.pieces["flat"];
+      piece = Level.pieces["flat"] || [];
     }
 
     for (var row = 0; row < CONFIG.ROWS; row++) {
-      Level.grid[row] = Level.grid[row] + piece[row];
+      var pieceRow = typeof piece[row] === "string" ? piece[row] : "";
+      if (pieceRow.length !== CONFIG.PIECE_COLS) {
+        console.error("Piece '" + pieceName + "' row " + row + " must be " + CONFIG.PIECE_COLS + " characters.");
+        pieceRow = (pieceRow + "........").slice(0, CONFIG.PIECE_COLS);
+      }
+      Level.grid[row] = Level.grid[row] + pieceRow;
     }
   }
 
