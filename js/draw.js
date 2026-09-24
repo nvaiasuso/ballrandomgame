@@ -32,7 +32,13 @@ Draw.finish = function (x, y, size) { var ctx = Draw.ctx; ctx.fillStyle = "#0000
 Draw.player = function () {
   var ctx = Draw.ctx, r = CONFIG.PLAYER_RADIUS, centerX = Player.x + CONFIG.PLAYER_SIZE / 2, centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
   ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#000000"; ctx.lineWidth = CONFIG.LINE_WIDTH; ctx.beginPath(); ctx.arc(centerX, centerY, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  var dotX = centerX + Math.cos(Player.angle) * r * CONFIG.DOT_DISTANCE, dotY = centerY + Math.sin(Player.angle) * r * CONFIG.DOT_DISTANCE;
+  var dotX = centerX + Math.cos(Player.aimAngle) * r * CONFIG.DOT_DISTANCE, dotY = centerY + Math.sin(Player.aimAngle) * r * CONFIG.DOT_DISTANCE;
   ctx.fillStyle = "#000000"; ctx.beginPath(); ctx.arc(dotX, dotY, 4, 0, Math.PI * 2); ctx.fill();
-  if (Player.hasGun) { ctx.fillRect(Player.x + (Player.vx < 0 ? -8 : CONFIG.PLAYER_SIZE - 2), centerY - 3, 10, 6); }
+  if (Player.hasGun) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(Player.aimAngle);
+    ctx.fillRect(8, -3, 14, 6);
+    ctx.restore();
+  }
 };

@@ -3,17 +3,21 @@
    ===================================================================== */
 
 var Player = {
-  x: 0, y: 0, vx: 0, vy: 0, onGround: false, angle: 0,
+  x: 0, y: 0, vx: 0, vy: 0, onGround: false, angle: 0, aimAngle: 0,
   hasGun: false, shootCooldown: 0
 };
 
 Player.reset = function () {
   Player.x = Level.startX; Player.y = Level.startY; Player.vx = 0; Player.vy = 0;
-  Player.onGround = false; Player.angle = 0; Player.hasGun = false; Player.shootCooldown = 0;
+  Player.onGround = false; Player.angle = 0; Player.aimAngle = 0;
+  Player.hasGun = false; Player.shootCooldown = 0;
 };
 
 Player.update = function () {
   var size = CONFIG.PLAYER_SIZE;
+  var centerX = Player.x + size / 2, centerY = Player.y + size / 2;
+  var aimX = Input.mouseX - centerX, aimY = Input.mouseY - centerY;
+  if (aimX !== 0 || aimY !== 0) { Player.aimAngle = Math.atan2(aimY, aimX); }
   Player.vx = 0;
   if (Input.left) { Player.vx = -CONFIG.MOVE_SPEED; }
   if (Input.right) { Player.vx = CONFIG.MOVE_SPEED; }
@@ -38,7 +42,7 @@ Player.update = function () {
   if (Player.x < 0) { Player.x = 0; }
 
   if (Player.shootCooldown > 0) { Player.shootCooldown--; }
-  if (Player.hasGun && Input.shoot && Player.shootCooldown === 0) {
+  if (Player.hasGun && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
     Enemy.firePlayerBullet(); Player.shootCooldown = CONFIG.PLAYER_SHOOT_COOLDOWN;
   }
 };

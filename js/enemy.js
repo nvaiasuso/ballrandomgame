@@ -19,7 +19,8 @@ Enemy.reset = function () {
       if (Level.charAt(col, row) === "e") {
         Enemy.list.push({
           x: col * CONFIG.TILE, y: row * CONFIG.TILE, vy: 0,
-          state: "patrol", timer: 0, dir: 1, alerted: false, shootTimer: 0
+          state: "patrol", timer: 0, dir: 1, onGround: false,
+          alerted: false, shootTimer: 0
         });
         Enemy.setTile(col, row, ".");
       }
@@ -41,13 +42,30 @@ Enemy.physics = function (e) {
   }
   e.vy += CONFIG.GRAVITY;
   if (e.vy > CONFIG.MAX_FALL) { e.vy = CONFIG.MAX_FALL; }
-  for (var step = 1; step <= Math.abs(e.vy); step++) {
-    if (Collide.hitsSolid(e.x, e.y + step, size, size)) {
+  e.onGround = false;
+  var stepY = e.vy > 0 ? 1 : (e.vy < 0 ? -1 : 0);
+  for (var step = 0; step < Math.abs(e.vy); step++) {
+    if (Collide.hitsSolid(e.x, e.y + stepY, size, size)) {
+      if (e.vy > 0) { e.onGround = true; }
       e.vy = 0;
       break;
     }
-    e.y += 1;
+    e.y += stepY;
   }
+};
+
+Enemy.chase = function (e) {
+  var targetX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var enemyCenterX = e.x + CONFIG.ENEMY_SIZE / 2;
+  e.dir = targetX < enemyCenterX ? -1 : 1;
+  var nextX = e.x + e.dir * CONFIG.ENEMY_SPEED;
+  if (Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+    if (e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+      e.vy = -CONFIG.JUMP_POWER * 0.8;
+    }
+    return;
+  }
+  e.x = nextX;
 };
 
 // A falling player can defeat an enemy by landing on it.
@@ -83,12 +101,15 @@ Enemy.collectPickups = function () {
 };
 
 Enemy.firePlayerBullet = function () {
-  var direction = Player.vx < 0 ? -1 : 1;
+  var angle = Player.aimAngle;
+  var directionX = Math.cos(angle), directionY = Math.sin(angle);
+  var centerX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
   Enemy.playerBullets.push({
-    x: Player.x + (direction > 0 ? CONFIG.PLAYER_SIZE : -8),
-    y: Player.y + CONFIG.PLAYER_SIZE / 2 - 4,
-    vx: direction * CONFIG.PLAYER_BULLET_SPEED,
-    vy: 0
+    x: centerX + directionX * CONFIG.PLAYER_RADIUS - 4,
+    y: centerY + directionY * CONFIG.PLAYER_RADIUS - 4,
+    vx: directionX * CONFIG.PLAYER_BULLET_SPEED,
+    vy: directionY * CONFIG.PLAYER_BULLET_SPEED
   });
 };
 
@@ -131,8 +152,7 @@ Enemy.update = function () {
       if (e.timer >= CONFIG.SPOT_FRAMES) { e.state = "run"; if (!e.alerted) { e.alerted = true; Enemy.alertOthers(e); } }
       if (!canSee && !Enemy.playerNear(e)) { e.state = "patrol"; }
     } else if (e.state === "run") {
-      if (Player.x < e.x) { e.x -= CONFIG.ENEMY_SPEED; }
-      if (Player.x > e.x + CONFIG.ENEMY_SIZE) { e.x += CONFIG.ENEMY_SPEED; }
+      Enemy.chase(e);
       Enemy.physics(e);
       e.shootTimer--;
       if (canSee && e.shootTimer <= 0) { Enemy.shoot(e); e.shootTimer = CONFIG.ENEMY_SHOOT_FRAMES; }
@@ -156,8 +176,13 @@ Enemy.update = function () {
 };
 
 Enemy.playerVisible = function (e) {
-  if (Math.abs((e.y + CONFIG.ENEMY_SIZE / 2) - (Player.y + CONFIG.PLAYER_SIZE / 2)) > CONFIG.TILE * 2) { return false; }
-  return Math.abs(Player.x - e.x) < CONFIG.SPOT_DISTANCE;
+  var enemyCenterX = e.x + CONFIG.ENEMY_SIZE / 2;
+  var enemyCenterY = e.y + CONFIG.ENEMY_SIZE / 2;
+  var playerCenterX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var playerCenterY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  if (Math.abs(enemyCenterY - playerCenterY) > CONFIG.TILE) { return false; }
+  if (Math.abs(playerCenterX - enemyCenterX) >= CONFIG.SPOT_DISTANCE) { return false; }
+  return !Collide.lineHitsSolid(enemyCenterX, enemyCenterY, playerCenterX, playerCenterY);
 };
 Enemy.playerNear = function (e) {
   var dx = Player.x - e.x, dy = Player.y - e.y;

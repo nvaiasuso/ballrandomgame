@@ -8,6 +8,7 @@ var CONFIG = {
   PIECE_COLS: 8,
   CANVAS_W: 800,
   CANVAS_H: 400,
+  VERSION: "0.4.0",
 
   ENEMY_SPEED: 2,
   ENEMY_SIZE: 32,

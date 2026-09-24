@@ -35,6 +35,18 @@ Collide.hitsSolid = function (x, y, width, height) {
   return false;
 };
 
+Collide.lineHitsSolid = function (startX, startY, endX, endY) {
+  var distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+  var steps = Math.ceil(distance / (CONFIG.TILE / 2));
+  for (var i = 1; i < steps; i++) {
+    var amount = i / steps;
+    var x = startX + (endX - startX) * amount;
+    var y = startY + (endY - startY) * amount;
+    if (Collide.hitsSolid(x - 2, y - 2, 4, 4)) { return true; }
+  }
+  return false;
+};
+
 // Is this box touching a spike?
 Collide.hitsSpike = function (x, y, width, height) {
   var squares = Collide.squaresUnder(x, y, width, height);
