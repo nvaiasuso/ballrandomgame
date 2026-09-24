@@ -214,7 +214,6 @@ Enemy.chase = function (e) {
 
 // A falling player can defeat an enemy by landing on it.
 Enemy.checkPlayerContact = function () {
-  if (Player.invincible) { return; }
   for (var i = Enemy.list.length - 1; i >= 0; i--) {
     var e = Enemy.list[i];
     if (e.stunned) { continue; }
@@ -225,7 +224,7 @@ Enemy.checkPlayerContact = function () {
       Player.y = e.y - CONFIG.PLAYER_SIZE;
       Player.vy = -CONFIG.JUMP_POWER * 0.55;
       Enemy.kill(i, true);
-    } else if (overlaps) {
+    } else if (overlaps && !Player.invincible) {
       Player.takeDamage("An enemy caught you.");
       return;
     }
