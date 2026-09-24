@@ -4,8 +4,8 @@
    ===================================================================== */
 
 body {
-  background: #ffffff;
-  color: #000000;
+  background: #f2efe8;
+  color: #18212b;
   font-family: monospace;
   text-align: center;
   margin: 24px;
@@ -17,9 +17,28 @@ h1 {
   margin-bottom: 16px;
 }
 
+#hud {
+  display: flex;
+  gap: 10px;
+  max-width: 800px;
+  margin: 0 auto 8px;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+#hud span {
+  border: 2px solid #18212b;
+  background: #ffffff;
+  padding: 8px 10px;
+  min-width: 130px;
+  box-sizing: border-box;
+}
+
 canvas {
   border: 3px solid #000000;
-  background: #ffffff;
+  background: #fffdf8;
   display: block;
   margin: 0 auto;
 }
@@ -30,6 +49,53 @@ canvas {
   margin-top: 16px;
 }
 
+#gamble-button, #gamble-panel button {
+  border: 2px solid #18212b;
+  background: #ffcf56;
+  color: #18212b;
+  font: bold 12px monospace;
+  letter-spacing: 1px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+#gamble-button { margin: 0 auto 8px; display: block; }
+#gamble-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+#gamble-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 43, 0.78);
+  z-index: 2;
+}
+
+#gamble-panel[hidden] { display: none !important; }
+
+.gamble-box {
+  width: min(360px, calc(100% - 32px));
+  border: 3px solid #ffcf56;
+  background: #fffdf8;
+  color: #18212b;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.gamble-box h2 { margin: 6px 0; font-size: 28px; }
+.gamble-box p { line-height: 1.5; }
+.gamble-kicker { color: #d94b32; font-weight: bold; letter-spacing: 2px; }
+#gamble-cancel { background: #fffdf8; margin-left: 6px; }
+
 .controls {
   font-size: 13px;
+}
+
+@media (max-width: 680px) {
+  body { margin: 12px 8px; }
+  h1 { margin: 8px 0 12px; }
+  #hud { gap: 4px; }
+  #hud span { min-width: 0; flex: 1; padding: 7px 4px; font-size: 9px; }
+  canvas { width: 100%; height: auto; }
+  .controls { line-height: 1.7; }
 }

@@ -28,6 +28,22 @@
     {
       "name": "Level 6 - Final Assault",
       "pieces": ["start", "hard_gap3", "platform", "stealth_test", "spikepit", "hard_gauntlet", "stairs", "finish"]
+    },
+    {
+      "name": "Level 7 - Crossfire",
+      "pieces": ["start", "enemy_line", "gap", "enemy_tower", "platform", "spikes", "finish"]
+    },
+    {
+      "name": "Level 8 - Pressure Run",
+      "pieces": ["start", "hard_gauntlet", "enemy_line", "gap", "step", "enemy_tower", "finish"]
+    },
+    {
+      "name": "Level 9 - Last Stand",
+      "pieces": ["start", "enemy_tower", "spikepit", "enemy_line", "hard_gap3", "hard_gauntlet", "finish"]
+    },
+    {
+      "name": "Level 10 - The Black Crown",
+      "pieces": ["start", "flat", "enemy_line", "armory", "boss_arena", "finish"]
     }
   ]
 }

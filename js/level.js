@@ -42,9 +42,13 @@ Level.loadData = function (whenDone) {
 // --- STEP 2: glue the pieces together ---------------------------------
 Level.build = function (levelNumber) {
   var level = Level.levels[levelNumber];
-  Level.name = level.name;
+  Level.buildPieces(level.name, level.pieces);
+};
+
+Level.buildPieces = function (name, pieceNames) {
+  Level.name = name;
   Level.grid = [];
-  Level.cols = level.pieces.length * CONFIG.PIECE_COLS;
+  Level.cols = pieceNames.length * CONFIG.PIECE_COLS;
 
   // start with 10 empty rows
   for (var row = 0; row < CONFIG.ROWS; row++) {
@@ -52,8 +56,8 @@ Level.build = function (levelNumber) {
   }
 
   // add each piece onto the end of every row
-  for (var p = 0; p < level.pieces.length; p++) {
-    var pieceName = level.pieces[p];
+  for (var p = 0; p < pieceNames.length; p++) {
+    var pieceName = pieceNames[p];
     var piece = Level.pieces[pieceName];
 
     if (!piece) {
@@ -67,6 +71,27 @@ Level.build = function (levelNumber) {
   }
 
   Level.findStart();
+};
+
+Level.buildRandom = function () {
+  var choices = ["flat", "gap", "spikes", "step", "platform", "stairs", "spikepit", "hard_gap3", "hard_gauntlet", "enemy_line", "enemy_tower"];
+  var pieceNames = ["start"];
+  for (var i = 0; i < 14; i++) {
+    pieceNames.push(choices[Math.floor(Math.random() * choices.length)]);
+  }
+  pieceNames.push("finish");
+  Level.buildPieces("RANDOM ASSAULT", pieceNames);
+  var enemyChars = Object.keys(CONFIG.ENEMY_TYPES);
+  for (var col = 8; col < Level.cols - 8; col++) {
+    if (Level.charAt(col, 7) === "." && Level.isSolid(col, 8) && Math.random() < 0.7) {
+      Level.setCharAt(col, 7, enemyChars[Math.floor(Math.random() * enemyChars.length)]);
+    }
+  }
+};
+
+Level.setCharAt = function (col, row, character) {
+  var line = Level.grid[row];
+  Level.grid[row] = line.substring(0, col) + character + line.substring(col + 1);
 };
 
 // --- STEP 3: find the S and remember where it is ----------------------
@@ -95,6 +120,7 @@ Level.charAt = function (col, row) {
 
 Level.isSolid  = function (col, row) { return Level.charAt(col, row) === "#"; };
 Level.isSpike  = function (col, row) { return Level.charAt(col, row) === "^"; };
+Level.isLava   = function (col, row) { return Level.charAt(col, row) === "~"; };
 Level.isFinish = function (col, row) { return Level.charAt(col, row) === "F"; };
 
 // How wide is the whole world, in pixels?

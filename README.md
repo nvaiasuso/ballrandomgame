@@ -11,6 +11,7 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - Jump onto an enemy to defeat it and make it drop a gun
 - X or K - fire after collecting a gun
 - R - restart the level
+- G or the GAMBLE button - pause and risk a random buff or debuff once per level
 
 The game now includes seven levels. The later levels include enemies, gaps, spikes, platforms, and stair sections.
 

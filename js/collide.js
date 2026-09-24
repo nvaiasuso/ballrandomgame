@@ -56,6 +56,14 @@ Collide.hitsSpike = function (x, y, width, height) {
   return false;
 };
 
+Collide.hitsLava = function (x, y, width, height) {
+  var squares = Collide.squaresUnder(x, y, width, height);
+  for (var i = 0; i < squares.length; i++) {
+    if (Level.isLava(squares[i].col, squares[i].row)) { return true; }
+  }
+  return false;
+};
+
 // Is this box touching the finish?
 Collide.hitsFinish = function (x, y, width, height) {
   var squares = Collide.squaresUnder(x, y, width, height);

@@ -11,7 +11,10 @@ var Input = {
   mouseX: 0,
   mouseY: 0,
   mouseDown: false,
-  versionToggle: false
+  versionToggle: false,
+  adminSkip: false,
+  adminRandom: false,
+  gamble: false
 };
 
 Input.updateMouse = function (event) {
@@ -29,8 +32,22 @@ window.addEventListener("mouseup", function (event) {
 });
 
 window.addEventListener("keydown", function (event) {
+  if (event.shiftKey && (event.code === "KeyQ" || event.key === "q" || event.key === "Q")) {
+    Input.adminSkip = true;
+    event.preventDefault();
+    return;
+  }
+  if (event.shiftKey && (event.code === "KeyG" || event.key === "g" || event.key === "G")) {
+    Input.adminRandom = true;
+    event.preventDefault();
+    return;
+  }
   if (event.shiftKey && (event.key === "y" || event.key === "Y")) {
     Input.versionToggle = true;
+    event.preventDefault();
+  }
+  if (!event.repeat && !event.shiftKey && (event.key === "g" || event.key === "G")) {
+    Input.gamble = true;
     event.preventDefault();
   }
   setKey(event.key, true);
