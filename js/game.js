@@ -34,14 +34,19 @@ var Game = {
   pendingLevel: 0,
   upgradeChoices: [],
   transitioning: false,
+  shopOpened: false,
   roundNumber: 0,
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };  
   
 Game.startLevel = function (levelNumber) {  
   Game.transitioning = false;
+  Game.shopOpened = false;
   Game.roundNumber++;
-  if (levelNumber === CONFIG.START_LEVEL) { Game.habits = { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }; }
+  if (levelNumber === CONFIG.START_LEVEL) {
+    Game.habits = { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 };
+    Player.shards = 0;
+  }
   Game.levelNumber = levelNumber;  
   Game.randomMode = false;
   Game.endless = false;
@@ -62,6 +67,8 @@ Game.startLevel = function (levelNumber) {
 
 Game.startRandomLevel = function () {
   Game.transitioning = false;
+  Game.shopOpened = false;
+  Player.shards = 0;
   Game.roundNumber++;
   Game.randomMode = true;
   Game.endless = false;
@@ -91,12 +98,14 @@ Game.startEndless = function (seed) {
   Game.endlessSeed = seed >>> 0;
   Game.endlessWave = 0;
   Game.score = 0;
+  Player.shards = 0;
   Game.highScore = Number(localStorage.getItem("rollerHighScore") || 0);
   Game.startEndlessWave();
 };
 
 Game.startEndlessWave = function () {
   Game.transitioning = false;
+  Game.shopOpened = false;
   Game.roundNumber++;
   Level.buildRandom((Game.endlessSeed + Game.endlessWave * 7919) >>> 0);
   Level.name = "ENDLESS WAVE " + (Game.endlessWave + 1);
@@ -181,6 +190,37 @@ Game.closeGamble = function () {
   Game.showMessage("");
 };
 
+Game.openShop = function () {
+  if (Game.mode !== "playing" || Game.shopOpened) { return; }
+  Game.shopOpened = true;
+  Game.mode = "shop";
+  document.getElementById("shop-panel").hidden = false;
+  Game.updateShopText();
+  Game.showMessage("A field mechanic offers upgrades.");
+};
+
+Game.closeShop = function () {
+  if (Game.mode !== "shop") { return; }
+  Game.mode = "playing";
+  document.getElementById("shop-panel").hidden = true;
+  Game.showMessage("Back to the fight.");
+};
+
+Game.updateShopText = function () {
+  document.getElementById("shop-shards").textContent = "SHARDS: " + Player.shards;
+};
+
+Game.buyShopUpgrade = function (upgrade) {
+  var costs = { speed: 3, jump: 3, health: 4 };
+  var cost = costs[upgrade];
+  if (!cost || Player.shards < cost) { Game.showMessage("Not enough weapon shards."); return; }
+  Player.shards -= cost;
+  if (upgrade === "speed") { Player.speedMultiplier += 0.12; Game.showMessage("TUNED WHEELS: speed +12%."); }
+  if (upgrade === "jump") { Player.jumpMultiplier += 0.1; Game.showMessage("SPRING COIL: jump +10%."); }
+  if (upgrade === "health") { Player.maxHealth++; Player.health = Player.maxHealth; Game.showMessage("REPAIR KIT: maximum health +1."); }
+  Game.updateShopText();
+};
+
 Game.resolveGamble = function () {
   if (Game.mode !== "gamble") { return; }
   var effects = [
@@ -210,6 +250,7 @@ Game.resolveGamble = function () {
 Game.die = function (reason) {
   if (Player.invincible) { return; }
   Game.mode = "dead";
+  Player.startDeathAnimation();
   AudioFX.hit();
   AudioFX.death();
   Game.showMessage(reason + " Press R to try again.");

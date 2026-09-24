@@ -8,7 +8,8 @@ var Player = {
   speedMultiplier: 1, jumpMultiplier: 1, gravityMultiplier: 1, damageMultiplier: 1, gambleEffect: "",
   health: CONFIG.PLAYER_HEALTH, maxHealth: CONFIG.PLAYER_HEALTH, hitTimer: 0,
   dashTimer: 0, dashCooldown: 0, dashDirection: 1, dashing: false,
-  scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false, ricochet: false, adaptiveAim: false
+  scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false, ricochet: false, adaptiveAim: false,
+  shards: 0, deathTimer: 0, deathVy: 0, deathAnimating: false
 };
 
 Player.reset = function () {
@@ -19,6 +20,7 @@ Player.reset = function () {
   Player.speedMultiplier = 1; Player.jumpMultiplier = 1; Player.gravityMultiplier = 1;
   Player.damageMultiplier = 1; Player.gambleEffect = "";
   Player.shieldMultiplier = 1; Player.piercing = false; Player.ricochet = false; Player.adaptiveAim = false;
+  Player.deathTimer = 0; Player.deathVy = 0; Player.deathAnimating = false;
   for (var perkIndex = 0; perkIndex < Player.perks.length; perkIndex++) {
     if (Player.perks[perkIndex] === "speed") { Player.speedMultiplier *= 1.12; }
     if (Player.perks[perkIndex] === "jump") { Player.jumpMultiplier *= 1.15; }
@@ -133,6 +135,20 @@ Player.isDead = function () {
     Player.takeDamage("The hazard hit you.");
   }
   return Game.mode === "dead";
+};
+
+Player.startDeathAnimation = function () {
+  Player.deathAnimating = true;
+  Player.deathTimer = 45;
+  Player.deathVy = Player.vy < 1 ? 2 : Player.vy;
+};
+
+Player.updateDeathAnimation = function () {
+  if (!Player.deathAnimating || Player.deathTimer <= 0) { return; }
+  Player.deathTimer--;
+  Player.deathVy += CONFIG.GRAVITY;
+  Player.y += Player.deathVy;
+  Player.angle += 0.16;
 };
 Player.hasWon = function () {
   if (Enemy.boss || Enemy.list.length > 0) { return false; }

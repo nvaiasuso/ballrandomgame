@@ -25,6 +25,10 @@ document.addEventListener("fullscreenchange", function () {
 });
 document.getElementById("gamble-confirm").addEventListener("click", function (event) { event.stopPropagation(); Game.resolveGamble(); });
 document.getElementById("gamble-cancel").addEventListener("click", function (event) { event.stopPropagation(); Game.closeGamble(); });
+document.getElementById("shop-speed").addEventListener("click", function () { Game.buyShopUpgrade("speed"); });
+document.getElementById("shop-jump").addEventListener("click", function () { Game.buyShopUpgrade("jump"); });
+document.getElementById("shop-health").addEventListener("click", function () { Game.buyShopUpgrade("health"); });
+document.getElementById("shop-close").addEventListener("click", function () { Game.closeShop(); });
 
 Level.loadData(function () {
   Game.startLevel(CONFIG.START_LEVEL);

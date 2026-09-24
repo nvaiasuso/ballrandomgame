@@ -84,6 +84,14 @@
     {
       "name": "Level 20 - Shatterpoint",
       "pieces": ["start", "hard_gap3", "turret_room", "risk_armory", "charger_run", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 21 - Mechanic's Run",
+      "pieces": ["start", "moving_platform", "enemy_tower", "crumble_run", "armory", "finish"]
+    },
+    {
+      "name": "Level 22 - Last Signal",
+      "pieces": ["start", "dark_run", "hard_gauntlet", "risk_armory", "splitter_hall", "boss_arena", "finish"]
     }
   ]
 }

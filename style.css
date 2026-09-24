@@ -134,6 +134,29 @@ canvas {
 
 #gamble-panel[hidden] { display: none !important; }
 
+#shop-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 43, 0.78);
+  z-index: 3;
+}
+
+#shop-panel[hidden] { display: none !important; }
+
+.shop-box {
+  width: min(380px, calc(100% - 32px));
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.shop-box h2 { margin: 6px 0; font-size: 28px; }
+.shop-box button { display: block; width: 100%; margin-top: 8px; }
+
 .gamble-box {
   width: min(360px, calc(100% - 32px));
   border: 3px solid #ffcf56;

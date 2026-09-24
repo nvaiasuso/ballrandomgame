@@ -16,6 +16,7 @@ var Enemy = {
   lavaWallX: -240,
   ambushes: [],
   cornerAmbushUsed: false
+  ,shop: null
 };
 
 Enemy.reset = function () {
@@ -32,6 +33,7 @@ Enemy.reset = function () {
   Enemy.lavaWallX = -240;
   Enemy.ambushes = [];
   Enemy.cornerAmbushUsed = false;
+  Enemy.shop = { x: Math.floor(Level.cols / 2) * CONFIG.TILE + 4, y: 7 * CONFIG.TILE - 28, opened: false };
   for (var triggerX = CONFIG.AMBUSH_DISTANCE; triggerX < Level.pixelWidth() - CONFIG.TILE * 3; triggerX += CONFIG.AMBUSH_DISTANCE) {
     Enemy.ambushes.push({ x: triggerX, triggered: false });
   }
@@ -194,6 +196,7 @@ Enemy.chase = function (e) {
     return;
   }
   var chaseSpeed = e.charger && e.chargeTimer > 0 ? e.speed * 3.5 : e.speed;
+  if (e.enragedTimer > 0) { chaseSpeed *= 1.25; }
   chaseSpeed *= Game.enemySpeedScale;
   var nextX = e.x + e.dir * chaseSpeed;
   var blocked = Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
@@ -241,7 +244,10 @@ Enemy.kill = function (index, stomped) {
   var weaponType = dropWeapons[Math.floor(Math.random() * dropWeapons.length)];
   if (e.type === "v" || e.type === "r") { level = 2; }
   if (e.splitter) { level = 2; }
-  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: level, weaponType: weaponType });
+  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: 1, weaponType: weaponType });
+  if (Game.combo > 0 && Game.combo % 3 === 0) {
+    Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 + 16, y: e.y + 4, size: 16, type: "weaponShard" });
+  }
   Enemy.deadBodies.push({ x: e.x - 4, y: e.y + CONFIG.ENEMY_SIZE - 11, width: CONFIG.ENEMY_SIZE + 8, color: e.color || "#ffffff", dir: e.dir });
   for (var burst = 0; burst < 28; burst++) {
     Enemy.effects.push({ x: e.x + CONFIG.ENEMY_SIZE / 2, y: e.y + CONFIG.ENEMY_SIZE / 2, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.8) * 10, life: 34, color: "#d94b32", size: 6 });
@@ -255,10 +261,11 @@ Enemy.kill = function (index, stomped) {
   for (var retreatIndex = 0; retreatIndex < Enemy.list.length; retreatIndex++) {
     var survivor = Enemy.list[retreatIndex];
     if (survivor !== e && !survivor.dead) {
-      survivor.retreatTimer = 42;
-      survivor.retreatX = e.x;
+      survivor.retreatTimer = 0;
+      survivor.enragedTimer = 180;
       survivor.state = "run";
       survivor.alerted = true;
+      survivor.shootTimer = Math.min(survivor.shootTimer, 12);
     }
   }
   Enemy.list.splice(index, 1);
@@ -317,6 +324,13 @@ Enemy.collectPickups = function () {
         Player.invincibleTimer = Math.floor(CONFIG.INVINCIBILITY_TIME * Player.shieldMultiplier);
         Player.invincible = true;
         Game.showMessage("INVINCIBILITY acquired! You have 6 seconds.");
+      } else if (p.type === "weaponShard") {
+        Player.hasGun = true;
+        Player.weaponType = Player.weaponType === "sidearm" ? "burst" : Player.weaponType;
+        Player.gunLevel = Math.max(2, Player.gunLevel);
+        Player.ammo = Math.max(Player.ammo, 24);
+        Player.weaponTimer = CONFIG.GUN_UPGRADE_TIME;
+        Game.showMessage("WEAPON SHARD: GUN LEVEL 2");
       } else {
         Player.hasGun = true;
         Player.weaponType = p.weaponType || (p.level > 2 ? "laser" : "sidearm");
@@ -345,6 +359,7 @@ Enemy.collectShards = function () {
     if (Player.x + CONFIG.PLAYER_SIZE > shard.x && Player.x < shard.x + shard.size &&
         Player.y + CONFIG.PLAYER_SIZE > shard.y && Player.y < shard.y + shard.size) {
       Game.score += 25;
+      Player.shards++;
       Game.combo++;
       Game.comboTimer = CONFIG.COMBO_TIMEOUT;
       Game.showMessage("ENERGY SHARD +25");
@@ -459,6 +474,7 @@ Enemy.updatePlayerBullets = function () {
 
 Enemy.update = function () {
   Enemy.updateEffects();
+  Enemy.checkShop();
   Enemy.updatePressure();
   Enemy.checkPlayerContact();
   for (var i = 0; i < Enemy.list.length; i++) {
@@ -466,6 +482,7 @@ Enemy.update = function () {
     if (e.dead) { continue; }
     if (e.burrowCooldown > 0) { e.burrowCooldown--; }
     if (e.slamCooldown > 0) { e.slamCooldown--; }
+    if (e.enragedTimer > 0) { e.enragedTimer--; }
     if (e.regenTimer > 0) { e.regenTimer--; }
     if (e.regenTimer === 0 && e.health < e.maxHealth && Game.frame % 45 === 0) { e.health++; }
     if (e.support && e.healTimer > 0) { e.healTimer--; }
@@ -490,7 +507,10 @@ Enemy.update = function () {
     var dodging = Enemy.dodgeBullets(e);
     var offscreenCharge = e.charger && Math.abs(Player.x - e.x) < CONFIG.AMBUSH_DISTANCE && Math.abs(Player.y - e.y) < CONFIG.TILE * 3;
     if (offscreenCharge) { e.state = "run"; e.alerted = true; e.chargeTimer = Math.max(e.chargeTimer, 24); }
-    if (dodging) { continue; }
+    if (dodging) {
+      Enemy.physics(e);
+      continue;
+    }
     if (e.state === "patrol") {
       var nextX = e.x + e.dir * e.speed * Game.enemySpeedScale;
       var willFall = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
@@ -588,6 +608,13 @@ Enemy.update = function () {
       Player.takeDamage("You were shot.");
     }
   }
+};
+
+Enemy.checkShop = function () {
+  if (!Enemy.shop || Game.mode !== "playing" || Game.shopOpened) { return; }
+  var nearShop = Player.x + CONFIG.PLAYER_SIZE > Enemy.shop.x - 34 && Player.x < Enemy.shop.x + 34 &&
+    Math.abs(Player.y - Enemy.shop.y) < CONFIG.TILE;
+  if (nearShop) { Game.openShop(); }
 };
 
 Enemy.bossPhysics = function () {
@@ -985,6 +1012,14 @@ Enemy.draw = function () {
     ctx.lineWidth = 2;
     ctx.strokeRect(-shard.size / 2, -shard.size / 2, shard.size, shard.size);
     ctx.restore();
+  }
+  if (Enemy.shop) {
+    ctx.fillStyle = "#20252b";
+    ctx.fillRect(Enemy.shop.x, Enemy.shop.y, 24, 28);
+    ctx.fillStyle = "#ffcf56";
+    ctx.beginPath(); ctx.arc(Enemy.shop.x + 12, Enemy.shop.y - 5, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#5ce1e6";
+    ctx.fillRect(Enemy.shop.x - 7, Enemy.shop.y - 21, 38, 4);
   }
   for (var fx = 0; fx < Enemy.effects.length; fx++) {
     var particle = Enemy.effects[fx];
