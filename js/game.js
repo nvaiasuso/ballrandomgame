@@ -224,10 +224,10 @@ Game.registerKill = function (isBoss) {
 };
 
 Game.startChaos = function () {
-  var events = ["LOW GRAVITY", "ENEMY FRENZY", "FATE STORM"];
+  var events = ["ENEMY FRENZY", "FATE STORM"];
   Game.chaosType = events[Math.floor(Math.random() * events.length)];
   Game.chaosRemaining = CONFIG.CHAOS_DURATION;
-  Game.gravityScale = Game.chaosType === "LOW GRAVITY" ? 0.35 : 1;
+  Game.gravityScale = 1;
   Game.enemySpeedScale = Game.chaosType === "ENEMY FRENZY" ? 1.8 : 1;
   Game.showMessage("CHAOS EVENT: " + Game.chaosType);
   if (Game.chaosType === "FATE STORM" && !Game.gambleUsed) { Game.openGamble(); }
@@ -327,6 +327,13 @@ Game.die = function (reason) {
 Game.update = function () {  
     Game.frame++;
 
+  if (Input.secretInvincibility) {
+    Input.secretInvincibility = false;
+    Player.secretInvincibility = !Player.secretInvincibility;
+    Player.invincible = Player.secretInvincibility;
+    Player.invincibleTimer = Player.secretInvincibility ? 999999 : 0;
+  }
+
   if (Game.mode === "guide") {
     if (Input.shoot) { Input.shoot = false; Game.closeGuide(); }
     return;
@@ -396,7 +403,7 @@ Game.update = function () {
   // If we are not playing, nothing moves. We just wait for R.  
   if (Game.mode !== "playing") { return; }  
 
-  Game.levelTime--;
+  if (!Enemy.boss) { Game.levelTime--; }
   Level.updateDynamic();
   if (Game.levelTime <= 0) {
     if (!Player.invincible) {

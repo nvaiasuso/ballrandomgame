@@ -6,7 +6,7 @@ var Player = {
   x: 0, y: 0, vx: 0, vy: 0, onGround: false, angle: 0, aimAngle: 0,
   hasGun: false, gunLevel: 0, weaponType: "sidearm", ammo: CONFIG.PLAYER_START_AMMO, weaponTimer: 0, invincible: false, invincibleTimer: 0, shootCooldown: 0,
   speedMultiplier: 1, jumpMultiplier: 1, gravityMultiplier: 1, damageMultiplier: 1, gambleEffect: "",
-  health: CONFIG.PLAYER_HEALTH, maxHealth: CONFIG.PLAYER_HEALTH, hitTimer: 0,
+  health: CONFIG.PLAYER_HEALTH, maxHealth: CONFIG.PLAYER_HEALTH, hitTimer: 0, secretInvincibility: false, secretHealthTimer: 0,
   dashTimer: 0, dashCooldown: 0, dashDirection: 1, dashing: false,
   scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false, ricochet: false, adaptiveAim: false,
   shards: 0, deathTimer: 0, deathVy: 0, deathAnimating: false
@@ -16,7 +16,7 @@ Player.reset = function () {
   Player.x = Level.startX; Player.y = Level.startY; Player.vx = 0; Player.vy = 0;
   Player.onGround = false; Player.angle = 0; Player.aimAngle = 0;
   Player.hasGun = false; Player.gunLevel = 0; Player.weaponType = "sidearm"; Player.ammo = CONFIG.PLAYER_START_AMMO; Player.weaponTimer = 0;
-  Player.invincible = false; Player.invincibleTimer = 0; Player.shootCooldown = 0;
+  Player.invincible = Player.secretInvincibility; Player.invincibleTimer = Player.secretInvincibility ? 999999 : 0; Player.shootCooldown = 0;
   Player.speedMultiplier = 1; Player.jumpMultiplier = 1; Player.gravityMultiplier = 1;
   Player.damageMultiplier = 1; Player.gambleEffect = "";
   Player.shieldMultiplier = 1; Player.piercing = false; Player.ricochet = false; Player.adaptiveAim = false;
@@ -28,12 +28,18 @@ Player.reset = function () {
     if (Player.perks[perkIndex] === "pierce") { Player.piercing = true; }
   }
   Player.health = CONFIG.PLAYER_HEALTH; Player.maxHealth = CONFIG.PLAYER_HEALTH; Player.hitTimer = 0;
+  Player.secretHealthTimer = 60 + Math.floor(Math.random() * 120);
   Player.dashTimer = 0; Player.dashCooldown = 0; Player.dashDirection = 1; Player.dashing = false;
   Player.scaleX = 1; Player.scaleY = 1; Player.muzzleFlash = 0;
 };
 
 Player.takeDamage = function (reason) {
   if (Player.invincible || Player.dashing || Player.hitTimer > 0 || Game.mode !== "playing") { return; }
+  if (Player.secretInvincibility && Player.health <= 1) {
+    Player.health = Player.maxHealth;
+    Player.hitTimer = CONFIG.HIT_COOLDOWN;
+    return;
+  }
   Player.health--;
   Player.hitTimer = CONFIG.HIT_COOLDOWN;
   Game.hitTint = 12;
@@ -58,6 +64,13 @@ Player.unstick = function () {
 
 Player.update = function () {
   var size = CONFIG.PLAYER_SIZE;
+  if (Player.secretInvincibility) {
+    Player.secretHealthTimer--;
+    if (Player.secretHealthTimer <= 0) {
+      Player.health = 1 + Math.floor(Math.random() * Math.min(3, Player.maxHealth));
+      Player.secretHealthTimer = 60 + Math.floor(Math.random() * 120);
+    }
+  }
   Player.unstick();
   var wasOnGround = Player.onGround;
   var centerX = Player.x + size / 2, centerY = Player.y + size / 2;

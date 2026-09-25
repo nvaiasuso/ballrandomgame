@@ -20,6 +20,7 @@ var Input = {
   endless: false,
   pause: false,
   invincibility: false
+  ,secretInvincibility: false
 };
 
 Input.updateMouse = function (event) {
@@ -72,6 +73,10 @@ window.addEventListener("keydown", function (event) {
   }
   if (!event.repeat && !event.shiftKey && (event.key === "i" || event.key === "I")) {
     Input.invincibility = true;
+    event.preventDefault();
+  }
+  if (!event.repeat && event.shiftKey && (event.code === "KeyP" || event.key === "p" || event.key === "P")) {
+    Input.secretInvincibility = true;
     event.preventDefault();
   }
   if (event.key === "Shift") { Input.dash = true; event.preventDefault(); }

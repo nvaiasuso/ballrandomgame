@@ -119,15 +119,27 @@
     },
     {
       "name": "Level 29 - Signal Break",
-      "pieces": ["start", "flat", "turret_room", "gap", "armory", "finish"]
+      "pieces": ["start", "flat", "enemy_line", "turret_room", "gap", "armory", "enemy_line", "finish"]
     },
     {
       "name": "Level 30 - Split Run",
-      "pieces": ["start", "splitter_hall", "platform", "charger_run", "finish"]
+      "pieces": ["start", "splitter_hall", "platform", "enemy_line", "charger_run", "gap", "finish"]
     },
     {
       "name": "Level 31 - Final Descent",
-      "pieces": ["start", "hard_gauntlet", "moving_platform", "enemy_line", "boss_arena", "finish"]
+      "pieces": ["start", "hard_gauntlet", "moving_platform", "enemy_line", "turret_room", "enemy_line", "boss_arena", "finish"]
+    },
+    {
+      "name": "Level 32 - Long Crossfire",
+      "pieces": ["start", "enemy_line", "gap", "enemy_tower", "platform", "charger_run", "enemy_line", "finish"]
+    },
+    {
+      "name": "Level 33 - Siege Circuit",
+      "pieces": ["start", "turret_room", "enemy_line", "crumble_run", "splitter_hall", "armory", "enemy_tower", "finish"]
+    },
+    {
+      "name": "Level 34 - Final March",
+      "pieces": ["start", "enemy_line", "hard_gauntlet", "charger_run", "enemy_line", "turret_room", "boss_arena", "armory", "finish"]
     }
   ]
 }

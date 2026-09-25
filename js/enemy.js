@@ -202,7 +202,11 @@ Enemy.chase = function (e) {
   var blocked = Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
   var edge = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
   var spike = Collide.hitsSpike(nextX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
-  if (blocked || spike) {
+  if (spike) {
+    e.dir = -e.dir;
+    return;
+  }
+  if (blocked) {
     if (e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
       e.vy = -CONFIG.JUMP_POWER * 0.8;
     }
@@ -219,7 +223,7 @@ Enemy.chase = function (e) {
 Enemy.checkPlayerContact = function () {
   for (var i = Enemy.list.length - 1; i >= 0; i--) {
     var e = Enemy.list[i];
-    if (e.stunned || e.alertDelay > 0) { continue; }
+    if (e.stunned || e.alertDelay > 0 || e.fallingGuy) { continue; }
     var overlaps = Player.x + CONFIG.PLAYER_SIZE > e.x && Player.x < e.x + CONFIG.ENEMY_SIZE &&
       Player.y + CONFIG.PLAYER_SIZE > e.y && Player.y < e.y + CONFIG.ENEMY_SIZE;
     var landingY = e.y - CONFIG.PLAYER_SIZE;
@@ -250,7 +254,7 @@ Enemy.kill = function (index, stomped) {
   if (Game.combo > 0 && Game.combo % 3 === 0) {
     Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 + 16, y: e.y + 4, size: 16, type: "weaponShard", life: 600 });
   }
-  Enemy.deadBodies.push({ x: e.x - 4, y: e.y + CONFIG.ENEMY_SIZE - 11, width: CONFIG.ENEMY_SIZE + 8, color: e.color || "#ffffff", dir: e.dir });
+  Enemy.deadBodies.push({ x: e.x - 4, y: e.y + CONFIG.ENEMY_SIZE - 11, vy: 0, width: CONFIG.ENEMY_SIZE + 8, color: e.color || "#ffffff", dir: e.dir });
   if (Enemy.deadBodies.length > 40) { Enemy.deadBodies.shift(); }
   for (var burst = 0; burst < 28; burst++) {
     Enemy.effects.push({ x: e.x + CONFIG.ENEMY_SIZE / 2, y: e.y + CONFIG.ENEMY_SIZE / 2, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.8) * 10, life: 34, color: "#d94b32", size: 6 });
@@ -283,6 +287,17 @@ Enemy.kill = function (index, stomped) {
 };
 
 Enemy.updateEffects = function () {
+  for (var bodyIndex = 0; bodyIndex < Enemy.deadBodies.length; bodyIndex++) {
+    var body = Enemy.deadBodies[bodyIndex];
+    if (body.grounded) { continue; }
+    body.vy += CONFIG.GRAVITY;
+    var nextY = body.y + body.vy;
+    if (Collide.hitsSolid(body.x, nextY, body.width, 10)) {
+      body.grounded = true;
+    } else {
+      body.y = nextY;
+    }
+  }
   for (var i = Enemy.effects.length - 1; i >= 0; i--) {
     var effect = Enemy.effects[i];
     effect.x += effect.vx; effect.y += effect.vy; effect.vy += 0.25; effect.life--;
@@ -500,6 +515,11 @@ Enemy.update = function () {
     if (e.dead) { continue; }
     if (e.y > CONFIG.CANVAS_H + 80) {
       Enemy.list.splice(i, 1);
+      i--;
+      continue;
+    }
+    if (Collide.hitsSpike(e.x, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+      Enemy.kill(i, false);
       i--;
       continue;
     }
@@ -781,7 +801,7 @@ Enemy.spawnMinion = function (x) {
   if (Collide.hitsSolid(x, 0, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { return; }
   var type = CONFIG.ENEMY_TYPES.s;
   Enemy.list.push({
-    id: Enemy.nextId++, x: x, y: 0, vy: 0, state: "run", timer: 0, dir: 1, fallingGuy: true, invulnerable: true, attackDelay: 360,
+    id: Enemy.nextId++, x: x, y: 0, vy: 0, state: "run", timer: 0, dir: 1, fallingGuy: true, invulnerable: true, attackDelay: 180,
     onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
     maxHealth: type.health, speed: type.speed, shootFrames: type.shootFrames,
     bulletSpeed: type.bulletSpeed, type: "s", color: type.color, flying: false, stunned: false, stunTimer: 0,

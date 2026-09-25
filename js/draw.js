@@ -35,8 +35,12 @@ Draw.everything = function () {
     ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.arc(Player.x - Draw.cameraX + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, Player.muzzleFlash > 0 ? 170 : 110, 0, Math.PI * 2);
+    ctx.arc(Player.x - Draw.cameraX + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, Player.muzzleFlash > 0 ? 280 : 220, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(-Draw.cameraX, 0);
+    Draw.player();
     ctx.restore();
     if (Player.muzzleFlash > 0) {
       ctx.fillStyle = "rgba(255, 207, 86, 0.16)";
@@ -98,7 +102,7 @@ Draw.hud = function () {
     else if (Player.gunLevel > 1) { weaponText = "WEAPON: HEAVY " + Math.ceil(Player.weaponTimer / 60) + "s"; }
     else if (Player.hasGun) { weaponText = "WEAPON: SIDEARM " + Player.ammo; }
     weaponHud.textContent = weaponText;
-    if (Player.invincible) { weaponHud.textContent += " · SHIELD " + Math.ceil(Player.invincibleTimer / 60) + "s"; }
+    if (Player.invincible && !Player.secretInvincibility) { weaponHud.textContent += " · SHIELD " + Math.ceil(Player.invincibleTimer / 60) + "s"; }
   }
   if (healthHud) { healthHud.textContent = "HEALTH " + Player.health + "/" + Player.maxHealth; }
   if (dashHud) { dashHud.textContent = Player.dashing ? "DASHING" : (Player.dashCooldown > 0 ? "DASH " + Math.ceil(Player.dashCooldown / 60) + "s" : "DASH READY"); }
@@ -184,7 +188,7 @@ Draw.player = function () {
     if (Player.gunLevel > 2) { ctx.fillRect(18, -8, 8, 16); }
   }
   ctx.restore();
-  if (Player.invincible) {
+  if (Player.invincible && !Player.secretInvincibility) {
     ctx.strokeStyle = "#ffcf56";
     ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(centerX, centerY, r + 7, 0, Math.PI * 2); ctx.stroke();
