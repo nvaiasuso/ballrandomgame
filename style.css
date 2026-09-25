@@ -155,7 +155,8 @@ canvas {
 
 #game-shell:fullscreen #gamble-panel,
 #game-shell:fullscreen #shop-panel,
-#game-shell:fullscreen #guide-panel {
+#game-shell:fullscreen #guide-panel,
+#game-shell:fullscreen #multiplayer-panel {
   position: fixed;
   z-index: 20;
 }
@@ -170,6 +171,33 @@ canvas {
 }
 
 #guide-panel[hidden] { display: none !important; }
+
+#multiplayer-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 43, 0.86);
+  z-index: 5;
+}
+
+#multiplayer-panel[hidden] { display: none !important; }
+
+.multiplayer-box {
+  width: min(380px, calc(100% - 32px));
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.multiplayer-box h2 { margin: 6px 0 12px; font-size: 28px; }
+.multiplayer-box button { display: block; width: 100%; margin-top: 8px; }
+.multiplayer-box label { display: block; margin-top: 16px; font-size: 12px; font-weight: bold; }
+.multiplayer-box input { width: 100%; box-sizing: border-box; border: 2px solid #18212b; padding: 9px; margin-top: 5px; font: bold 16px monospace; text-transform: uppercase; }
+#multiplayer-code-display { color: #d94b32; font-size: 20px; font-weight: bold; letter-spacing: 3px; text-align: center; }
 
 .guide-box {
   width: min(680px, calc(100% - 28px));

@@ -35,11 +35,12 @@ var Game = {
   transitioning: false,
   shopOpened: false,
   roundNumber: 0,
+  checkpoint: { level: -1, x: 0, y: 0, nextX: 640 },
   tutorial: { active: false, step: 0, wrongTimer: 0 },
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };  
   
-Game.startLevel = function (levelNumber) {  
+Game.startLevel = function (levelNumber, preserveCheckpoint) {
   Game.transitioning = false;
   Game.shopOpened = false;
   Game.closePanels();
@@ -49,6 +50,9 @@ Game.startLevel = function (levelNumber) {
     Player.shards = 0;
   }
   Game.levelNumber = levelNumber;  
+  if (!preserveCheckpoint || Game.checkpoint.level !== levelNumber) {
+    Game.checkpoint = { level: levelNumber, x: 0, y: 0, nextX: 640 };
+  }
   Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL, step: 0, wrongTimer: 0 };
   Game.randomMode = false;
   Game.endless = false;
@@ -60,6 +64,11 @@ Game.startLevel = function (levelNumber) {
   Level.build(levelNumber);  
   Enemy.reset();  
   Player.reset();  
+  if (preserveCheckpoint && Game.checkpoint.level === levelNumber && Game.checkpoint.x > 0) {
+    Player.x = Game.checkpoint.x;
+    Player.y = Game.checkpoint.y;
+    Player.unstick();
+  }
   Game.keepPerks = false;
   Game.mode = "playing";  
   Game.levelTime = CONFIG.LEVEL_TIMES[Math.min(levelNumber, CONFIG.LEVEL_TIMES.length - 1)] * 60;
@@ -143,9 +152,11 @@ Game.closePanels = function () {
   var gamblePanel = document.getElementById("gamble-panel");
   var shopPanel = document.getElementById("shop-panel");
   var guidePanel = document.getElementById("guide-panel");
+  var multiplayerPanel = document.getElementById("multiplayer-panel");
   if (gamblePanel) { gamblePanel.hidden = true; gamblePanel.style.display = "none"; }
   if (shopPanel) { shopPanel.hidden = true; shopPanel.style.display = "none"; }
   if (guidePanel) { guidePanel.hidden = true; guidePanel.style.display = "none"; }
+  if (multiplayerPanel) { multiplayerPanel.hidden = true; multiplayerPanel.style.display = "none"; }
 };
 
 Game.openGuide = function () {
@@ -161,6 +172,22 @@ Game.closeGuide = function () {
   if (panel) { panel.hidden = true; panel.style.display = "none"; }
   Game.mode = "playing";
   Game.showMessage("Back to the fight.");
+};
+
+Game.openMultiplayerMenu = function () {
+  var panel = document.getElementById("multiplayer-panel");
+  if (!panel) { return; }
+  panel.hidden = false;
+  panel.style.display = "grid";
+  Game.mode = "lobby";
+  Network.setStatus(Network.connected ? "Connected to relay. Create or join a lobby." : "Connecting to relay...");
+  Network.showCode(Network.lobbyCode);
+};
+
+Game.closeMultiplayerMenu = function () {
+  var panel = document.getElementById("multiplayer-panel");
+  if (panel) { panel.hidden = true; panel.style.display = "none"; }
+  Game.mode = "playing";
 };
 
 Game.setTutorial = function (text) {
@@ -193,6 +220,14 @@ Game.updateTutorialState = function () {
   if (Game.tutorial.step === 2 && Player.hasGun) { Game.tutorial.step = 3; }
   if (Game.tutorial.step === 3 && Game.shopOpened) { Game.tutorial.step = 4; }
   Game.updateTutorial();
+};
+
+Game.updateCheckpoint = function () {
+  if (Game.levelNumber === CONFIG.START_LEVEL || !Player.onGround || Player.x < Game.checkpoint.nextX) { return; }
+  Game.checkpoint.x = Player.x;
+  Game.checkpoint.y = Player.y;
+  Game.checkpoint.nextX += 640;
+  Game.showMessage("CHECKPOINT REACHED");
 };
 
 Game.togglePause = function () {
@@ -334,6 +369,13 @@ Game.update = function () {
     Player.invincibleTimer = Player.secretInvincibility ? 999999 : 0;
   }
 
+  if (Input.versionToggle) {
+    Input.versionToggle = false;
+    if (Game.mode === "lobby") { Game.closeMultiplayerMenu(); }
+    else { Game.openMultiplayerMenu(); }
+    return;
+  }
+
   if (Game.mode === "guide") {
     if (Input.shoot) { Input.shoot = false; Game.closeGuide(); }
     return;
@@ -349,7 +391,7 @@ Game.update = function () {
   // R always restarts, no matter what mode we are in.
   if (Input.restart) {
     if (Game.randomMode) { Game.startRandomLevel(); }
-    else { Game.startLevel(Game.levelNumber); }
+    else { Game.startLevel(Game.levelNumber, Game.mode === "dead"); }
     return;
   }
   if (Input.pause) {
@@ -427,6 +469,7 @@ Game.update = function () {
   
   Player.update();  
   Enemy.update();  
+  Game.updateCheckpoint();
   Game.updateTutorialState();
   
   if (Player.isDead()) {  
@@ -455,6 +498,7 @@ Game.update = function () {
 Game.loop = function () {  
   try {
     Game.update();
+    Network.tick();
     Draw.updateCamera();
     Input.refreshMouseWorld();
     Draw.everything();

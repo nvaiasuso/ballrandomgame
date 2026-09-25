@@ -74,6 +74,19 @@
       <p class="guide-close">Press X to close and start playing.</p>
     </div>
   </div>
+  <div id="multiplayer-panel" hidden>
+    <div class="multiplayer-box">
+      <p class="gamble-kicker">ONLINE LOBBY</p>
+      <h2>Play together</h2>
+      <p id="multiplayer-status">Connecting to the relay...</p>
+      <button id="multiplayer-create" type="button">CREATE LOBBY</button>
+      <label for="multiplayer-code">LOBBY CODE</label>
+      <input id="multiplayer-code" maxlength="6" autocomplete="off" placeholder="ABC123">
+      <button id="multiplayer-join" type="button">JOIN LOBBY</button>
+      <p id="multiplayer-code-display"></p>
+      <button id="multiplayer-close" type="button">BACK TO GAME</button>
+    </div>
+  </div>
   </div>
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>
@@ -83,6 +96,7 @@
   <script src="js/enemy.js"></script>
   <script src="js/player.js"></script>
   <script src="js/draw.js"></script>
+  <script src="js/network.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
 </body>

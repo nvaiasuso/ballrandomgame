@@ -28,7 +28,7 @@ Draw.everything = function () {
   var shakeY = Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
   ctx.save();
   ctx.translate(-Draw.cameraX + shakeX, shakeY);
-  Draw.world(); Enemy.draw(); Draw.player(); ctx.restore();
+  Draw.world(); Enemy.draw(); Draw.player(); Network.draw(); ctx.restore();
   if (Level.dark) {
     ctx.save();
     ctx.fillStyle = "rgba(5, 7, 13, 0.9)";

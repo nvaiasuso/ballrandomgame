@@ -29,6 +29,11 @@ document.getElementById("shop-speed").addEventListener("click", function () { Ga
 document.getElementById("shop-jump").addEventListener("click", function () { Game.buyShopUpgrade("jump"); });
 document.getElementById("shop-health").addEventListener("click", function () { Game.buyShopUpgrade("health"); });
 document.getElementById("shop-close").addEventListener("click", function () { Game.closeShop(); });
+document.getElementById("multiplayer-create").addEventListener("click", function () { Network.createLobby(); });
+document.getElementById("multiplayer-join").addEventListener("click", function () {
+  Network.joinLobby(document.getElementById("multiplayer-code").value);
+});
+document.getElementById("multiplayer-close").addEventListener("click", function () { Game.closeMultiplayerMenu(); });
 
 Level.loadData(function () {
   var wantsTutorial = window.confirm("Would you like to play the tutorial first?");
