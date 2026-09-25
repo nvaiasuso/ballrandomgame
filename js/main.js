@@ -31,6 +31,7 @@ document.getElementById("shop-health").addEventListener("click", function () { G
 document.getElementById("shop-close").addEventListener("click", function () { Game.closeShop(); });
 
 Level.loadData(function () {
-  Game.startLevel(CONFIG.START_LEVEL);
+  var wantsTutorial = window.confirm("Would you like to play the tutorial first?");
+  Game.startLevel(wantsTutorial ? CONFIG.START_LEVEL : CONFIG.START_LEVEL + 1);
   Game.loop();
 });

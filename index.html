@@ -26,6 +26,7 @@
   </div>
   <canvas id="game" width="800" height="400"></canvas>
   <p id="message">Loading...</p>
+  <p id="tutorial-message" aria-live="polite"></p>
   <p class="controls">
     LEFT / RIGHT or A / D to roll &nbsp;&middot;&nbsp;
     SPACE / UP to jump &nbsp;&middot;&nbsp;
@@ -33,7 +34,6 @@
     R to restart &nbsp;&middot;&nbsp; G gamble for a random buff or debuff &nbsp;&middot;&nbsp;
     SHIFT+Q skip level &nbsp;&middot;&nbsp; SHIFT+G random test level &nbsp;&middot;&nbsp; I toggle invincibility
   </p>
-  </div>
   <div id="gamble-panel" hidden>
     <div class="gamble-box">
       <p class="gamble-kicker">THE FATE WHEEL</p>
@@ -53,6 +53,7 @@
       <button id="shop-health" type="button">REPAIR KIT - 4</button>
       <button id="shop-close" type="button">RETURN TO BATTLE</button>
     </div>
+  </div>
   </div>
   <script src="js/config.js"></script>
   <script src="js/audio.js"></script>

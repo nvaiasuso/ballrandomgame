@@ -61,6 +61,14 @@ canvas {
   margin-top: 16px;
 }
 
+#tutorial-message {
+  color: #d94b32;
+  font-size: 15px;
+  font-weight: bold;
+  min-height: 22px;
+  margin: 4px auto 0;
+}
+
 #gamble-button, #pause-button, #fullscreen-button, #gamble-panel button {
   border: 2px solid #18212b;
   background: #ffcf56;

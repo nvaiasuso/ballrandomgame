@@ -130,6 +130,8 @@ Player.update = function () {
   if (Player.hasGun && Player.ammo > 0 && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
     Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Game.habits.shots++; Player.shootCooldown = Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "burst" ? 30 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "grenade" ? 28 : CONFIG.PLAYER_SHOOT_COOLDOWN)));
     if (Player.ammo === 0) { Player.hasGun = false; Player.gunLevel = 0; Game.showMessage("CLICK. Empty weapon."); }
+  } else if (Game.tutorial.active && Game.tutorial.step === 1 && (Input.shoot || Input.mouseDown)) {
+    Game.tutorialMistake("shooting needs a collected gun; jump on the enemy first.");
   }
 };
 

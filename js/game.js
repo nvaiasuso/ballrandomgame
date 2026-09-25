@@ -36,6 +36,9 @@ var Game = {
   transitioning: false,
   shopOpened: false,
   roundNumber: 0,
+  reducedEffects: false,
+  performanceMonitor: { lastStamp: 0, slowFrames: 0, prompted: false },
+  tutorial: { active: false, step: 0, wrongTimer: 0 },
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };  
   
@@ -48,6 +51,7 @@ Game.startLevel = function (levelNumber) {
     Player.shards = 0;
   }
   Game.levelNumber = levelNumber;  
+  Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL, step: 0, wrongTimer: 0 };
   Game.randomMode = false;
   Game.endless = false;
   Game.gambleUsed = false;
@@ -63,6 +67,7 @@ Game.startLevel = function (levelNumber) {
   Game.levelTime = CONFIG.LEVEL_TIMES[Math.min(levelNumber, CONFIG.LEVEL_TIMES.length - 1)] * 60;
   Game.lastTime = 0;
   Game.showMessage("Find a weapon and survive.");
+  Game.updateTutorial();
 };  
 
 Game.startRandomLevel = function () {
@@ -134,6 +139,60 @@ Game.showMessage = function (text) {
   document.getElementById("message").textContent = text;  
 };  
 
+Game.monitorPerformance = function () {
+  var now = window.performance && performance.now ? performance.now() : Date.now();
+  var monitor = Game.performanceMonitor;
+  if (monitor.lastStamp > 0) {
+    var frameTime = now - monitor.lastStamp;
+    monitor.slowFrames = frameTime > 45 ? monitor.slowFrames + 1 : Math.max(0, monitor.slowFrames - 1);
+  }
+  monitor.lastStamp = now;
+  if (monitor.slowFrames >= 20 && !monitor.prompted) {
+    monitor.prompted = true;
+    if (window.confirm("Low frame rate detected. Turn off particles and screen shake for less lag?")) {
+      Game.toggleReducedEffects(true);
+    }
+  }
+};
+
+Game.toggleReducedEffects = function (enabled) {
+  Game.reducedEffects = enabled === undefined ? !Game.reducedEffects : enabled;
+  if (Game.reducedEffects) { Enemy.effects = []; }
+  Game.showMessage(Game.reducedEffects ? "LOW-LAG MODE ON" : "LOW-LAG MODE OFF");
+};
+
+Game.setTutorial = function (text) {
+  var element = document.getElementById("tutorial-message");
+  if (element) { element.textContent = text; }
+};
+
+Game.updateTutorial = function () {
+  if (!Game.tutorial.active) { Game.setTutorial(""); return; }
+  if (Game.tutorial.wrongTimer > 0) { return; }
+  var text = "MOVE with LEFT / RIGHT. Reach the enemy.";
+  if (Game.tutorial.step === 1) { text = "JUMP onto the enemy to STOMP it. Do not shoot: you do not have a gun yet."; }
+  if (Game.tutorial.step === 2) { text = "Collect the dropped gun, aim with the mouse, then click or press X to shoot."; }
+  if (Game.tutorial.step === 3) { text = "A shop is nearby. Choose an upgrade, then press RETURN TO BATTLE to close it."; }
+  if (Game.tutorial.step >= 4) { text = "Reach the flag. Jump gaps and spikes; the instruction stays here."; }
+  Game.setTutorial(text);
+};
+
+Game.tutorialMistake = function (text) {
+  if (!Game.tutorial.active) { return; }
+  Game.tutorial.wrongTimer = 150;
+  Game.setTutorial("TRY AGAIN: " + text);
+};
+
+Game.updateTutorialState = function () {
+  if (!Game.tutorial.active) { return; }
+  if (Game.tutorial.wrongTimer > 0) { Game.tutorial.wrongTimer--; }
+  if (Game.tutorial.step === 0 && (Input.left || Input.right)) { Game.tutorial.step = 1; }
+  if (Game.tutorial.step === 1 && Enemy.deadBodies.length > 0) { Game.tutorial.step = 2; }
+  if (Game.tutorial.step === 2 && Player.hasGun) { Game.tutorial.step = 3; }
+  if (Game.tutorial.step === 3 && Game.shopOpened) { Game.tutorial.step = 4; }
+  Game.updateTutorial();
+};
+
 Game.togglePause = function () {
   if (Game.mode === "playing") {
     Game.mode = "paused";
@@ -198,6 +257,7 @@ Game.openShop = function () {
   document.getElementById("shop-panel").hidden = false;
   Game.updateShopText();
   Game.showMessage("A field mechanic offers upgrades.");
+  Game.updateTutorial();
 };
 
 Game.closeShop = function () {
@@ -205,6 +265,7 @@ Game.closeShop = function () {
   Game.mode = "playing";
   document.getElementById("shop-panel").hidden = true;
   Game.showMessage("Back to the fight.");
+  if (Game.tutorial.active && Game.tutorial.step === 3) { Game.tutorial.step = 4; Game.updateTutorial(); }
 };
 
 Game.updateShopText = function () {
@@ -233,6 +294,8 @@ Game.resolveGamble = function () {
     { name: "ADAPTIVE AIM", text: "Your shots lead moving targets more aggressively.", apply: function () { Player.damageMultiplier = 1.25; Player.adaptiveAim = true; } },
     { name: "SECOND WIND", text: "Buff: your health expands and refills.", apply: function () { Player.maxHealth += 2; Player.health = Player.maxHealth; } },
     { name: "PHASE SHIFT", text: "Buff: your body becomes untouchable.", apply: function () { Player.invincible = true; Player.invincibleTimer = CONFIG.INVINCIBILITY_TIME; } },
+    { name: "HOT BARREL", text: "Buff: your weapon fires faster.", apply: function () { Player.shootCooldown = Math.max(0, Player.shootCooldown - 8); } },
+    { name: "IRON CORE", text: "Buff: your next hit is softened.", apply: function () { Player.maxHealth++; Player.health = Math.min(Player.maxHealth, Player.health + 1); } },
     { name: "LEAD BOOTS", text: "Debuff: gravity pulls twice as hard.", apply: function () { Player.gravityMultiplier = 2; } },
     { name: "JAMMED TRIGGER", text: "Debuff: your weapon fires slower.", apply: function () { Player.shootCooldown += 15; } },
     { name: "FRAIL FORTUNE", text: "Debuff: your shield is stripped away.", apply: function () { Player.invincible = false; Player.invincibleTimer = 0; } }
@@ -284,6 +347,10 @@ Game.update = function () {
     Player.invincible = !Player.invincible;
     Player.invincibleTimer = Player.invincible ? 999999 : 0;
     Game.showMessage(Player.invincible ? "INVINCIBILITY ON - press I to disable." : "INVINCIBILITY OFF.");
+  }
+  if (Input.reduceEffects) {
+    Input.reduceEffects = false;
+    Game.toggleReducedEffects();
   }
   if (Input.adminRandom) {
     Input.adminRandom = false;
@@ -349,6 +416,7 @@ Game.update = function () {
   
   Player.update();  
   Enemy.update();  
+  Game.updateTutorialState();
   
   if (Player.isDead()) {  
     Game.die("You hit something.");
@@ -375,13 +443,14 @@ Game.update = function () {
 // --- THE LOOP ITSELF --------------------------------------------------  
 Game.loop = function () {  
   try {
+    Game.monitorPerformance();
     Game.update();
     Draw.updateCamera();
     Input.refreshMouseWorld();
     Draw.everything();
   } catch (error) {
     console.error("Game frame recovered from an error:", error);
-    if (Game.showMessage) { Game.showMessage("A frame recovered. Press R if the game looks wrong."); }
+    if (Game.showMessage) { Game.showMessage("A frame recovered: " + error.message + " Press R if needed."); }
   } finally {
     window.requestAnimationFrame(Game.loop);
   }

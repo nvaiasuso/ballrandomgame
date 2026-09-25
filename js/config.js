@@ -39,7 +39,7 @@ var CONFIG = {
     k: { name: "Trapper", health: 3, speed: 1.4, shootFrames: 55, bulletSpeed: 6, color: "#d6b36a", mineLayer: true },
     a: { name: "Burst Gunner", health: 3, speed: 1.8, shootFrames: 50, bulletSpeed: 6, color: "#ef9b62", burst: true },
     l: { name: "Laser Warden", health: 4, speed: 1, shootFrames: 70, bulletSpeed: 7, color: "#ef6cf0", laser: true },
-    z: { name: "Shield Guard", health: 5, speed: 1.2, shootFrames: 38, bulletSpeed: 6, color: "#6b89d8", shield: true, armor: 2 },
+    z: { name: "Shield Guard", health: 5, speed: 1.2, shootFrames: 38, bulletSpeed: 6, color: "#6b89d8" },
     y: { name: "Medic", health: 3, speed: 1.1, shootFrames: 65, bulletSpeed: 5, color: "#8ed1a7", support: true },
     x: { name: "Bomber", health: 1, speed: 3.8, shootFrames: 90, bulletSpeed: 5, color: "#e06b4f", suicide: true },
     o: { name: "Glider", health: 2, speed: 2.2, shootFrames: 55, bulletSpeed: 6, color: "#b8d7e8", glide: true }
@@ -80,7 +80,7 @@ var CONFIG = {
   GUN_ULTRA_TIME: 10 * 60,
   GUN_ULTIMATE_TIME: 12 * 60,
   INVINCIBILITY_TIME: 6 * 60,
-  LEVEL_TIMES: [30, 28, 26, 24, 22, 20, 18, 18, 16, 40, 30, 32, 28, 28, 40, 30, 28, 26, 36],
+  LEVEL_TIMES: [35, 34, 32, 30, 26, 24, 22, 20, 18, 40, 30, 32, 28, 28, 40, 30, 28, 26, 36],
   RANDOM_LEVEL_TIME: 28,
 
   LINE_WIDTH: 3,
