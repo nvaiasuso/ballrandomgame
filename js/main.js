@@ -33,5 +33,6 @@ document.getElementById("shop-close").addEventListener("click", function () { Ga
 Level.loadData(function () {
   var wantsTutorial = window.confirm("Would you like to play the tutorial first?");
   Game.startLevel(wantsTutorial ? CONFIG.START_LEVEL : CONFIG.START_LEVEL + 1);
+  Game.openGuide();
   Game.loop();
 });

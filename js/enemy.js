@@ -633,6 +633,7 @@ Enemy.update = function () {
   Enemy.updateHazards();
   for (var b = Enemy.bullets.length - 1; b >= 0; b--) {
     var bullet = Enemy.bullets[b];
+    if (!bullet) { continue; }
     if (bullet.homing) {
       var aimAngle = Math.atan2(Player.y - bullet.y, Player.x - bullet.x);
       var speed = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
@@ -797,7 +798,7 @@ Enemy.spawnAmbush = function (x) {
     var type = CONFIG.ENEMY_TYPES[typeKey];
     var enemyX = x + (i - 1) * 28;
     if (Collide.hitsSolid(enemyX, 0, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { continue; }
-    Enemy.list.push({ id: Enemy.nextId++, x: enemyX, y: 0, vy: 0, state: "run", timer: 0, ambush: true, alertDelay: 300 + i * 45, dir: enemyX < Player.x ? 1 : -1,
+    Enemy.list.push({ id: Enemy.nextId++, x: enemyX, y: 0, vy: 0, state: "run", timer: 0, ambush: true, ambushActive: true, alertDelay: 0, dir: enemyX < Player.x ? 1 : -1,
       onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
       maxHealth: type.health, speed: type.speed, shootFrames: type.shootFrames,
       bulletSpeed: type.bulletSpeed, type: typeKey, color: type.color, flying: !!type.flying,
@@ -1091,7 +1092,7 @@ Enemy.draw = function () {
     ctx.fillStyle = "#5ce1e6";
     ctx.fillRect(Enemy.shop.x - 7, Enemy.shop.y - 21, 38, 4);
   }
-  for (var fx = 0; fx < Enemy.effects.length && !Game.reducedEffects; fx++) {
+  for (var fx = 0; fx < Enemy.effects.length; fx++) {
     var particle = Enemy.effects[fx];
     ctx.fillStyle = particle.color || "#d94b32";
     ctx.globalAlpha = particle.life / 28;

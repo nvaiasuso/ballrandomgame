@@ -19,7 +19,6 @@ var Game = {
   chaosRemaining: 0,
   chaosType: "",
   gravityScale: 1,
-  gravityFlipped: false,
   enemySpeedScale: 1
   ,hitTint: 0,
   bossFlicker: 0,
@@ -36,8 +35,6 @@ var Game = {
   transitioning: false,
   shopOpened: false,
   roundNumber: 0,
-  reducedEffects: false,
-  performanceMonitor: { lastStamp: 0, slowFrames: 0, prompted: false },
   tutorial: { active: false, step: 0, wrongTimer: 0 },
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };  
@@ -45,6 +42,7 @@ var Game = {
 Game.startLevel = function (levelNumber) {  
   Game.transitioning = false;
   Game.shopOpened = false;
+  Game.closePanels();
   Game.roundNumber++;
   if (levelNumber === CONFIG.START_LEVEL) {
     Game.habits = { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 };
@@ -73,6 +71,7 @@ Game.startLevel = function (levelNumber) {
 Game.startRandomLevel = function () {
   Game.transitioning = false;
   Game.shopOpened = false;
+  Game.closePanels();
   Player.shards = 0;
   Game.roundNumber++;
   Game.randomMode = true;
@@ -111,6 +110,7 @@ Game.startEndless = function (seed) {
 Game.startEndlessWave = function () {
   Game.transitioning = false;
   Game.shopOpened = false;
+  Game.closePanels();
   Game.roundNumber++;
   Level.buildRandom((Game.endlessSeed + Game.endlessWave * 7919) >>> 0);
   Level.name = "ENDLESS WAVE " + (Game.endlessWave + 1);
@@ -139,26 +139,28 @@ Game.showMessage = function (text) {
   document.getElementById("message").textContent = text;  
 };  
 
-Game.monitorPerformance = function () {
-  var now = window.performance && performance.now ? performance.now() : Date.now();
-  var monitor = Game.performanceMonitor;
-  if (monitor.lastStamp > 0) {
-    var frameTime = now - monitor.lastStamp;
-    monitor.slowFrames = frameTime > 45 ? monitor.slowFrames + 1 : Math.max(0, monitor.slowFrames - 1);
-  }
-  monitor.lastStamp = now;
-  if (monitor.slowFrames >= 20 && !monitor.prompted) {
-    monitor.prompted = true;
-    if (window.confirm("Low frame rate detected. Turn off particles and screen shake for less lag?")) {
-      Game.toggleReducedEffects(true);
-    }
-  }
+Game.closePanels = function () {
+  var gamblePanel = document.getElementById("gamble-panel");
+  var shopPanel = document.getElementById("shop-panel");
+  var guidePanel = document.getElementById("guide-panel");
+  if (gamblePanel) { gamblePanel.hidden = true; gamblePanel.style.display = "none"; }
+  if (shopPanel) { shopPanel.hidden = true; shopPanel.style.display = "none"; }
+  if (guidePanel) { guidePanel.hidden = true; guidePanel.style.display = "none"; }
 };
 
-Game.toggleReducedEffects = function (enabled) {
-  Game.reducedEffects = enabled === undefined ? !Game.reducedEffects : enabled;
-  if (Game.reducedEffects) { Enemy.effects = []; }
-  Game.showMessage(Game.reducedEffects ? "LOW-LAG MODE ON" : "LOW-LAG MODE OFF");
+Game.openGuide = function () {
+  var panel = document.getElementById("guide-panel");
+  if (!panel) { return; }
+  panel.hidden = false;
+  panel.style.display = "grid";
+  Game.mode = "guide";
+};
+
+Game.closeGuide = function () {
+  var panel = document.getElementById("guide-panel");
+  if (panel) { panel.hidden = true; panel.style.display = "none"; }
+  Game.mode = "playing";
+  Game.showMessage("Back to the fight.");
 };
 
 Game.setTutorial = function (text) {
@@ -207,7 +209,7 @@ Game.resetIntensity = function () {
   Game.hitstop = 0; Game.timeScale = 1; Game.slowMoTimer = 0; Game.simAccumulator = 0;
   Game.combo = 0; Game.comboTimer = 0; Game.chaosTimer = CONFIG.CHAOS_INTERVAL;
   Game.chaosRemaining = 0; Game.chaosType = ""; Game.gravityScale = 1;
-  Game.gravityFlipped = false; Game.enemySpeedScale = 1; Game.hitTint = 0; Game.bossFlicker = 0;
+  Game.enemySpeedScale = 1; Game.hitTint = 0; Game.bossFlicker = 0;
 };
 
 Game.impact = function (hitstop, slowMo) {
@@ -222,11 +224,10 @@ Game.registerKill = function (isBoss) {
 };
 
 Game.startChaos = function () {
-  var events = ["LOW GRAVITY", "ENEMY FRENZY", "GRAVITY FLIP", "FATE STORM"];
+  var events = ["LOW GRAVITY", "ENEMY FRENZY", "FATE STORM"];
   Game.chaosType = events[Math.floor(Math.random() * events.length)];
   Game.chaosRemaining = CONFIG.CHAOS_DURATION;
   Game.gravityScale = Game.chaosType === "LOW GRAVITY" ? 0.35 : 1;
-  Game.gravityFlipped = Game.chaosType === "GRAVITY FLIP";
   Game.enemySpeedScale = Game.chaosType === "ENEMY FRENZY" ? 1.8 : 1;
   Game.showMessage("CHAOS EVENT: " + Game.chaosType);
   if (Game.chaosType === "FATE STORM" && !Game.gambleUsed) { Game.openGamble(); }
@@ -237,6 +238,7 @@ Game.openGamble = function () {
   Game.mode = "gamble";
   var panel = document.getElementById("gamble-panel");
   panel.hidden = false;
+  panel.style.display = "grid";
   panel.style.display = "";
   Game.showMessage("The Fate Wheel is waiting.");
 };
@@ -255,6 +257,7 @@ Game.openShop = function () {
   Game.shopOpened = true;
   Game.mode = "shop";
   document.getElementById("shop-panel").hidden = false;
+  document.getElementById("shop-panel").style.display = "grid";
   Game.updateShopText();
   Game.showMessage("A field mechanic offers upgrades.");
   Game.updateTutorial();
@@ -323,6 +326,11 @@ Game.die = function (reason) {
 // --- ONE FRAME --------------------------------------------------------  
 Game.update = function () {  
     Game.frame++;
+
+  if (Game.mode === "guide") {
+    if (Input.shoot) { Input.shoot = false; Game.closeGuide(); }
+    return;
+  }
   
   if (Input.adminSkip) {
     Input.adminSkip = false;
@@ -347,10 +355,6 @@ Game.update = function () {
     Player.invincible = !Player.invincible;
     Player.invincibleTimer = Player.invincible ? 999999 : 0;
     Game.showMessage(Player.invincible ? "INVINCIBILITY ON - press I to disable." : "INVINCIBILITY OFF.");
-  }
-  if (Input.reduceEffects) {
-    Input.reduceEffects = false;
-    Game.toggleReducedEffects();
   }
   if (Input.adminRandom) {
     Input.adminRandom = false;
@@ -406,7 +410,7 @@ Game.update = function () {
   if (Game.chaosRemaining > 0) {
     Game.chaosRemaining--;
     if (Game.chaosRemaining === 0) {
-      Game.gravityScale = 1; Game.gravityFlipped = false; Game.enemySpeedScale = 1; Game.chaosType = "";
+      Game.gravityScale = 1; Game.enemySpeedScale = 1; Game.chaosType = "";
       Game.showMessage("Chaos fades. Keep moving.");
     }
   } else {
@@ -443,7 +447,6 @@ Game.update = function () {
 // --- THE LOOP ITSELF --------------------------------------------------  
 Game.loop = function () {  
   try {
-    Game.monitorPerformance();
     Game.update();
     Draw.updateCamera();
     Input.refreshMouseWorld();

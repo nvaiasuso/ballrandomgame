@@ -153,6 +153,41 @@ canvas {
 
 #shop-panel[hidden] { display: none !important; }
 
+#game-shell:fullscreen #gamble-panel,
+#game-shell:fullscreen #shop-panel,
+#game-shell:fullscreen #guide-panel {
+  position: fixed;
+  z-index: 20;
+}
+
+#guide-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 43, 0.86);
+  z-index: 4;
+}
+
+#guide-panel[hidden] { display: none !important; }
+
+.guide-box {
+  width: min(680px, calc(100% - 28px));
+  max-height: min(82vh, 640px);
+  overflow: auto;
+  border: 3px solid #ffcf56;
+  background: #fffdf8;
+  color: #18212b;
+  padding: 22px 26px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.guide-box h2 { margin: 6px 0 12px; font-size: 28px; }
+.guide-copy { line-height: 1.45; }
+.guide-copy p { margin: 0 0 10px; }
+.guide-close { color: #d94b32; font-weight: bold; margin: 16px 0 0; }
+
 .shop-box {
   width: min(380px, calc(100% - 32px));
   border: 3px solid #5ce1e6;

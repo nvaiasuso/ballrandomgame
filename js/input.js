@@ -19,8 +19,7 @@ var Input = {
   dash: false,
   endless: false,
   pause: false,
-  invincibility: false,
-  reduceEffects: false
+  invincibility: false
 };
 
 Input.updateMouse = function (event) {
@@ -73,10 +72,6 @@ window.addEventListener("keydown", function (event) {
   }
   if (!event.repeat && !event.shiftKey && (event.key === "i" || event.key === "I")) {
     Input.invincibility = true;
-    event.preventDefault();
-  }
-  if (!event.repeat && !event.shiftKey && (event.key === "l" || event.key === "L")) {
-    Input.reduceEffects = true;
     event.preventDefault();
   }
   if (event.key === "Shift") { Input.dash = true; event.preventDefault(); }

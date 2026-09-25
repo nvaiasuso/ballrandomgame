@@ -24,8 +24,8 @@ Draw.updateCamera = function () {
 Draw.everything = function () {
   var ctx = Draw.ctx; ctx.fillStyle = Enemy.boss ? "#3b1018" : "#ffffff"; ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
   if (Game.mode === "dead") { Player.updateDeathAnimation(); }
-  var shakeX = !Game.reducedEffects && Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
-  var shakeY = !Game.reducedEffects && Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
+  var shakeX = Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
+  var shakeY = Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
   ctx.save();
   ctx.translate(-Draw.cameraX + shakeX, shakeY);
   Draw.world(); Enemy.draw(); Draw.player(); ctx.restore();

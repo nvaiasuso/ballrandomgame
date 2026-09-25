@@ -87,10 +87,9 @@ Player.update = function () {
     Player.vy = 0;
     Player.dashTimer--;
   } else {
-    Player.vy += CONFIG.GRAVITY * Player.gravityMultiplier * Game.gravityScale * (Game.gravityFlipped ? -1 : 1);
+    Player.vy += CONFIG.GRAVITY * Player.gravityMultiplier * Game.gravityScale;
   }
-  if (!Game.gravityFlipped && Player.vy > CONFIG.MAX_FALL) { Player.vy = CONFIG.MAX_FALL; }
-  if (Game.gravityFlipped && Player.vy < -CONFIG.MAX_FALL) { Player.vy = -CONFIG.MAX_FALL; }
+  if (Player.vy > CONFIG.MAX_FALL) { Player.vy = CONFIG.MAX_FALL; }
 
   var stepX = Player.vx > 0 ? 1 : (Player.vx < 0 ? -1 : 0);
   for (var i = 0; i < Math.abs(Player.vx); i++) {
