@@ -2,14 +2,28 @@
    draw.js  --  EVERYTHING YOU CAN SEE.
    ===================================================================== */
 
-var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true, secretImage: null, secretImageReady: false };
+var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true, secretImage: null, secretImageReady: false, secretImageUrl: null };
 Draw.setup = function () {
   Draw.canvas = document.getElementById("game");
   Draw.ctx = Draw.canvas.getContext("2d");
   Draw.secretImage = new Image();
-  Draw.secretImage.onload = function () { Draw.secretImageReady = true; };
-  Draw.secretImage.onerror = function () { Draw.secretImageReady = false; };
-  Draw.secretImage.src = "image.png";
+  Draw.secretImage.onload = function () {
+    Draw.secretImageReady = true;
+    if (Draw.secretImageUrl) { URL.revokeObjectURL(Draw.secretImageUrl); Draw.secretImageUrl = null; }
+  };
+  Draw.secretImage.onerror = function () {
+    Draw.secretImageReady = false;
+    if (Draw.secretImageUrl) { URL.revokeObjectURL(Draw.secretImageUrl); Draw.secretImageUrl = null; }
+  };
+  fetch("image.png").then(function (response) {
+    if (!response.ok) { throw new Error("image.png returned HTTP " + response.status); }
+    return response.arrayBuffer();
+  }).then(function (imageData) {
+    var bytes = new Uint8Array(imageData);
+    var imageType = bytes[0] === 0xff && bytes[1] === 0xd8 ? "image/jpeg" : "image/png";
+    Draw.secretImageUrl = URL.createObjectURL(new Blob([imageData], { type: imageType }));
+    Draw.secretImage.src = Draw.secretImageUrl;
+  }).catch(function () { Draw.secretImageReady = false; });
 };
 Draw.updateCamera = function () {
   var lookTarget = Math.abs(Player.vx) > 0.1 ? (Player.vx > 0 ? CONFIG.CAMERA_LOOKAHEAD : -CONFIG.CAMERA_LOOKAHEAD) : 0;
@@ -208,16 +222,25 @@ Draw.player = function () {
     ctx.beginPath(); ctx.arc(centerX, centerY, r + 10, 0, Math.PI * 2); ctx.stroke();
   }
   if (Player.secretBuff) {
+    var ringPulse = Math.sin(Game.frame / 8) * 2;
+    ctx.strokeStyle = "#14232b";
+    ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.arc(centerX, centerY, r + 12 + ringPulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(centerX, centerY, r + 12 + ringPulse, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (Player.secretBuff) {
     for (var orbit = 0; orbit < 4; orbit++) {
-      var orbitAngle = Game.frame * 0.08 + orbit * Math.PI / 2;
-      var orbitX = Math.cos(orbitAngle) * 30;
-      var orbitY = Math.sin(orbitAngle) * 22;
-      Draw.drawSecretSprite(orbitX, orbitY, 14);
+      var orbitAngle = Game.frame * 0.06 + orbit * Math.PI / 2;
+      var orbitX = Math.cos(orbitAngle) * 38;
+      var orbitY = Math.sin(orbitAngle) * 28;
+      Draw.drawSecretSprite(orbitX, orbitY, 24);
     }
   }
   if (Game.secretBuffCinematic && Game.secretBuffCinematic.frame < 40) {
     var bobX = Math.sin(Game.secretBuffCinematic.frame * 0.32) * 26;
-    Draw.drawSecretSprite(bobX, -20, 30);
+    Draw.drawSecretSprite(bobX, -20, 46);
   }
 };
 
@@ -269,7 +292,7 @@ Draw.companion = function () {
   ctx.moveTo(companion.x + 3, companion.y + 4 + bob);
   ctx.lineTo(Player.x + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2);
   ctx.stroke();
-  Draw.drawSecretSprite(companion.x, companion.y + bob, 30);
+  Draw.drawSecretSprite(companion.x, companion.y + bob, 52);
 };
 
 Draw.secretSpray = function () {
@@ -309,12 +332,12 @@ Draw.secretCinematic = function () {
   ctx.fillRect(0, 0, CONFIG.CANVAS_W, 24);
   ctx.fillRect(0, CONFIG.CANVAS_H - 24, CONFIG.CANVAS_W, 24);
   if (scene.frame < 40) { return; }
-  var corners = [[22, 22], [CONFIG.CANVAS_W - 22, 22], [22, CONFIG.CANVAS_H - 22], [CONFIG.CANVAS_W - 22, CONFIG.CANVAS_H - 22]];
+  var corners = [[40, 40], [CONFIG.CANVAS_W - 40, 40], [40, CONFIG.CANVAS_H - 40], [CONFIG.CANVAS_W - 40, CONFIG.CANVAS_H - 40]];
   ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.fillStyle = "#ffffff"; ctx.lineWidth = 2;
   for (var corner = 0; corner < corners.length; corner++) {
     var point = corners[corner];
     ctx.beginPath(); ctx.moveTo(point[0], point[1]); ctx.lineTo(centerX, centerY); ctx.stroke();
-    Draw.drawSecretSprite(point[0], point[1], 44);
+    Draw.drawSecretSprite(point[0], point[1], 64);
   }
   for (var ring = 0; ring < 6; ring++) {
     var radius = (scene.frame * 5 + ring * 24) % 150;

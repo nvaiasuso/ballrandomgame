@@ -136,7 +136,7 @@ Enemy.physics = function (e) {
 };
 
 Enemy.startJump = function (e, direction, multiplier) {
-  var jumpPower = CONFIG.JUMP_POWER * (multiplier || (e.type === "h" ? 1.15 : 1));
+  var jumpPower = CONFIG.JUMP_POWER * (multiplier || (e.type === "h" ? 1.25 : 1.2));
   e.vy = -jumpPower;
   e.jumpDirection = direction;
   e.jumpTimer = Math.ceil(jumpPower * 2 / CONFIG.GRAVITY);
@@ -144,7 +144,7 @@ Enemy.startJump = function (e, direction, multiplier) {
 };
 
 Enemy.canJumpAcross = function (e, direction) {
-  var jumpPower = CONFIG.JUMP_POWER * (e.type === "h" ? 1.15 : 1);
+  var jumpPower = CONFIG.JUMP_POWER * (e.type === "h" ? 1.25 : 1.2);
   var jumpSpeed = Math.max(e.speed * Game.enemySpeedScale, 1);
   var reach = jumpSpeed * jumpPower * 2 / CONFIG.GRAVITY * 0.9;
   var crossedHazard = false;
@@ -160,13 +160,24 @@ Enemy.canJumpAcross = function (e, direction) {
 };
 
 Enemy.touchesSpike = function (e) {
-  var footY = e.y + CONFIG.ENEMY_SIZE;
-  var row = Math.floor(footY / CONFIG.TILE);
-  for (var col = Math.floor(e.x / CONFIG.TILE); col <= Math.floor((e.x + CONFIG.ENEMY_SIZE - 1) / CONFIG.TILE); col++) {
-    if (!Level.isSpike(col, row)) { continue; }
-    var centerX = col * CONFIG.TILE + CONFIG.TILE / 2;
-    var halfWidth = Math.min(CONFIG.TILE / 2, Math.max(0, footY - row * CONFIG.TILE) / CONFIG.TILE * CONFIG.TILE / 2);
-    if (e.x < centerX + halfWidth && e.x + CONFIG.ENEMY_SIZE > centerX - halfWidth) { return true; }
+  var firstCol = Math.floor(e.x / CONFIG.TILE);
+  var lastCol = Math.floor((e.x + CONFIG.ENEMY_SIZE - 1) / CONFIG.TILE);
+  var firstRow = Math.max(0, Math.floor(e.y / CONFIG.TILE));
+  var lastRow = Math.min(CONFIG.ROWS - 1, Math.floor((e.y + CONFIG.ENEMY_SIZE - 1) / CONFIG.TILE));
+  for (var row = firstRow; row <= lastRow; row++) {
+    if (e.y >= (row + 1) * CONFIG.TILE) { continue; }
+    for (var col = firstCol; col <= lastCol; col++) {
+      if (!Level.isSpike(col, row)) { continue; }
+      var tileLeft = col * CONFIG.TILE;
+      var tileRight = tileLeft + CONFIG.TILE;
+      var overlapLeft = Math.max(e.x, tileLeft);
+      var overlapRight = Math.min(e.x + CONFIG.ENEMY_SIZE, tileRight);
+      if (overlapRight <= overlapLeft) { continue; }
+      var centerX = tileLeft + CONFIG.TILE / 2;
+      var nearestX = Math.max(overlapLeft, Math.min(centerX, overlapRight));
+      var spikeSurfaceY = row * CONFIG.TILE + Math.abs(nearestX - centerX) * 2;
+      if (e.y < (row + 1) * CONFIG.TILE && e.y + CONFIG.ENEMY_SIZE > spikeSurfaceY) { return true; }
+    }
   }
   return false;
 };
@@ -576,15 +587,18 @@ Enemy.updatePlayerBullets = function () {
       if (bullet.life > 100) { Enemy.playerBullets.splice(b, 1); continue; }
     }
     if (bullet.homing) {
-      var nearest = null, nearestDistance = Infinity;
-      for (var targetIndex = 0; targetIndex < Enemy.list.length; targetIndex++) {
+      var nearest = bullet.targetEnemy && !bullet.targetEnemy.dead && Enemy.list.indexOf(bullet.targetEnemy) >= 0 ? bullet.targetEnemy : null;
+      var nearestDistance = Infinity;
+      for (var targetIndex = 0; !nearest && targetIndex < Enemy.list.length; targetIndex++) {
         var target = Enemy.list[targetIndex];
-        var targetDx = target.x - bullet.x, targetDy = target.y - bullet.y;
+        if (target.dead) { continue; }
+        var targetDx = target.x + CONFIG.ENEMY_SIZE / 2 - bullet.x;
+        var targetDy = target.y + CONFIG.ENEMY_SIZE / 2 - bullet.y;
         var targetDistance = targetDx * targetDx + targetDy * targetDy;
         if (targetDistance < nearestDistance) { nearest = target; nearestDistance = targetDistance; }
       }
       if (nearest) {
-        var homeAngle = Math.atan2(nearest.y - bullet.y, nearest.x - bullet.x);
+        var homeAngle = Math.atan2(nearest.y + CONFIG.ENEMY_SIZE / 2 - bullet.y, nearest.x + CONFIG.ENEMY_SIZE / 2 - bullet.x);
         var homeSpeed = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
         bullet.vx += (Math.cos(homeAngle) * homeSpeed - bullet.vx) * 0.08;
         bullet.vy += (Math.sin(homeAngle) * homeSpeed - bullet.vy) * 0.08;
@@ -957,7 +971,7 @@ Enemy.secretSpray = function () {
 Enemy.updateCompanion = function () {
   if (!Player.secretBuff) { Enemy.companion = null; return; }
   if (!Enemy.companion) {
-    Enemy.companion = { x: Player.x - 42, y: Player.y - 34, shotTimer: 0 };
+    Enemy.companion = { x: Player.x - 42, y: Player.y - 34, shotTimer: 0, targetEnemy: null };
   }
   var companion = Enemy.companion;
   var followX = Player.x + CONFIG.PLAYER_SIZE / 2 - 42;
@@ -966,23 +980,43 @@ Enemy.updateCompanion = function () {
   companion.y += (followY - companion.y) * 0.16;
   if (companion.shotTimer > 0) { companion.shotTimer--; }
   if (companion.shotTimer > 0 || Enemy.list.length === 0) { return; }
-  var target = null;
+  var target = companion.targetEnemy;
+  if (target && (Enemy.list.indexOf(target) < 0 || target.dead || !Enemy.isOnScreen(target) ||
+      Collide.lineHitsSolid(companion.x, companion.y, target.x + CONFIG.ENEMY_SIZE / 2, target.y + CONFIG.ENEMY_SIZE / 2))) {
+    target = null;
+  }
   var nearestDistance = 560 * 560;
-  for (var i = 0; i < Enemy.list.length; i++) {
-    var enemy = Enemy.list[i];
-    var dx = enemy.x + CONFIG.ENEMY_SIZE / 2 - companion.x;
-    var dy = enemy.y + CONFIG.ENEMY_SIZE / 2 - companion.y;
-    var distance = dx * dx + dy * dy;
-    if (distance < nearestDistance) { target = enemy; nearestDistance = distance; }
+  if (!target) {
+    for (var i = 0; i < Enemy.list.length; i++) {
+      var enemy = Enemy.list[i];
+      if (enemy.dead || !Enemy.isOnScreen(enemy)) { continue; }
+      var dx = enemy.x + CONFIG.ENEMY_SIZE / 2 - companion.x;
+      var dy = enemy.y + CONFIG.ENEMY_SIZE / 2 - companion.y;
+      var distance = dx * dx + dy * dy;
+      if (distance < nearestDistance && !Collide.lineHitsSolid(companion.x, companion.y, enemy.x + CONFIG.ENEMY_SIZE / 2, enemy.y + CONFIG.ENEMY_SIZE / 2)) {
+        target = enemy;
+        nearestDistance = distance;
+      }
+    }
   }
   if (!target) { return; }
   var angle = Math.atan2(target.y + CONFIG.ENEMY_SIZE / 2 - companion.y, target.x + CONFIG.ENEMY_SIZE / 2 - companion.x);
-  Enemy.playerBullets.push({
-    x: companion.x - 5, y: companion.y - 5,
-    vx: Math.cos(angle) * 10, vy: Math.sin(angle) * 10,
-    damage: 2, homing: true, secret: true, life: 0, hitTargets: []
-  });
-  companion.shotTimer = 18;
+  for (var shot = -1; shot <= 1; shot++) {
+    var shotAngle = angle + shot * 0.1;
+    Enemy.playerBullets.push({
+      x: companion.x - 4, y: companion.y - 4,
+      vx: Math.cos(shotAngle) * 11, vy: Math.sin(shotAngle) * 11,
+      damage: 1, homing: true, secret: true, targetEnemy: target, life: 0, hitTargets: []
+    });
+  }
+  companion.targetEnemy = null;
+  companion.shotTimer = 24;
+};
+
+Enemy.companionRetaliate = function (attacker) {
+  if (!Player.secretBuff || !Enemy.companion || !attacker || attacker.dead) { return; }
+  Enemy.companion.targetEnemy = attacker;
+  Enemy.companion.shotTimer = Math.min(Enemy.companion.shotTimer, 1);
 };
 
 Enemy.hasOriginalEnemies = function () {
@@ -1432,6 +1466,7 @@ Enemy.shoot = function (e) {
   var py = Player.y + CONFIG.PLAYER_SIZE / 2 + learnedJumpBias + (Game.habits.recentJump > 0 ? 18 : 0);
   var dx = px - ex, dy = py - ey, dist = Math.sqrt(dx * dx + dy * dy);
   if (dist === 0) { return; }
+  Enemy.companionRetaliate(e);
   if (e.laser) {
     Enemy.hazards.push({ type: "laser", x: ex, y: ey, targetX: px, targetY: py, warning: 28, life: 48, owner: e });
     return;
