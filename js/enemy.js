@@ -137,7 +137,7 @@ Enemy.routeDirection = function (e, preferred) {
     var blocked = Collide.hitsSolid(probeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
     var spikeAhead = Collide.hitsSpike(probeX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
     var voidAhead = !Collide.hitsSolid(probeX, e.y + CONFIG.ENEMY_SIZE + 4, CONFIG.ENEMY_SIZE, 4);
-    if (!blocked && !spikeAhead && (!voidAhead || e.onGround)) { return direction; }
+    if (!blocked && !spikeAhead && !voidAhead) { return direction; }
   }
   return preferred;
 };
@@ -533,6 +533,14 @@ Enemy.updatePlayerBullets = function () {
 
 Enemy.update = function () {
   Enemy.updateEffects();
+  if (Player.secretBuff) {
+    for (var auraIndex = Enemy.list.length - 1; auraIndex >= 0; auraIndex--) {
+      var auraEnemy = Enemy.list[auraIndex];
+      var auraDx = auraEnemy.x + CONFIG.ENEMY_SIZE / 2 - Player.x - CONFIG.PLAYER_SIZE / 2;
+      var auraDy = auraEnemy.y + CONFIG.ENEMY_SIZE / 2 - Player.y - CONFIG.PLAYER_SIZE / 2;
+      if (auraDx * auraDx + auraDy * auraDy <= 92 * 92) { Enemy.kill(auraIndex, false); }
+    }
+  }
   Enemy.checkShop();
   Enemy.updatePressure();
   Enemy.checkPlayerContact();
@@ -665,15 +673,27 @@ Enemy.update = function () {
         }
       }
       if (e.charger && canSee && e.chargeTimer === 0) { e.chargeTimer = 24; }
-      if (e.fleeTimer > 0) {
+          if (e.fleeTimer > 0) {
         var fleeDir = Player.x < e.x ? 1 : -1;
         e.dir = fleeDir;
         var fleeX = e.x + fleeDir * e.speed * 1.3 * Game.enemySpeedScale;
-        if (!Collide.hitsSolid(fleeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.x = fleeX; }
+        var fleeSpike = Collide.hitsSpike(fleeX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+        var fleeVoid = !Collide.hitsSolid(fleeX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+        if ((fleeSpike || fleeVoid) && e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+          e.vy = -CONFIG.JUMP_POWER * 0.9;
+        } else if (!Collide.hitsSolid(fleeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE) && !fleeSpike && !fleeVoid) {
+          e.x = fleeX;
+        }
       } else if (e.retreatTimer > 0) {
         var retreatDirection = e.x < e.retreatX ? -1 : 1;
         var retreatX = e.x + retreatDirection * e.speed;
-        if (!Collide.hitsSolid(retreatX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.x = retreatX; }
+        var retreatSpike = Collide.hitsSpike(retreatX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+        var retreatVoid = !Collide.hitsSolid(retreatX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+        if ((retreatSpike || retreatVoid) && e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+          e.vy = -CONFIG.JUMP_POWER * 0.9;
+        } else if (!Collide.hitsSolid(retreatX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE) && !retreatSpike && !retreatVoid) {
+          e.x = retreatX;
+        }
         e.retreatTimer--;
       } else if (e.role === "suppress" && distanceToPlayer < CONFIG.SUPPRESS_RANGE) {
         e.dir = Player.x < e.x ? -1 : 1;
@@ -704,7 +724,13 @@ Enemy.update = function () {
       if (!e.turret && canSee && distance < 86) {
         e.dir = dx < 0 ? 1 : -1;
         var retreatX = e.x + e.dir * e.speed * 2;
-        if (!Collide.hitsSolid(retreatX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.x = retreatX; }
+        var retreatSpike = Collide.hitsSpike(retreatX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+        var retreatVoid = !Collide.hitsSolid(retreatX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+        if ((retreatSpike || retreatVoid) && e.onGround && !Collide.hitsSolid(e.x, e.y - CONFIG.TILE, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) {
+          e.vy = -CONFIG.JUMP_POWER * 0.9;
+        } else if (!Collide.hitsSolid(retreatX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE) && !retreatSpike && !retreatVoid) {
+          e.x = retreatX;
+        }
       }
       if (e.charger && e.chargeTimer === 0 && e.onGround && e.slamCooldown === 0 && distance < 90) {
         Enemy.enemySlam(e);
@@ -760,6 +786,22 @@ Enemy.update = function () {
       Enemy.bullets.splice(b, 1);
       Player.takeDamage("You were shot.");
     }
+  }
+};
+
+Enemy.secretSpray = function () {
+  var originX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var originY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  var directionX = Math.cos(Player.aimAngle);
+  var directionY = Math.sin(Player.aimAngle);
+  Player.secretSprayAngle = Player.aimAngle;
+  for (var enemyIndex = Enemy.list.length - 1; enemyIndex >= 0; enemyIndex--) {
+    var target = Enemy.list[enemyIndex];
+    var deltaX = target.x + CONFIG.ENEMY_SIZE / 2 - originX;
+    var deltaY = target.y + CONFIG.ENEMY_SIZE / 2 - originY;
+    var forward = deltaX * directionX + deltaY * directionY;
+    var side = Math.abs(deltaX * directionY - deltaY * directionX);
+    if (forward >= 0 && forward <= 620 && side <= 20 + forward * 0.12) { Enemy.kill(enemyIndex, false); }
   }
 };
 

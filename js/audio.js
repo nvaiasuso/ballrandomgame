@@ -40,6 +40,21 @@ var AudioFX = {
     oscillator.connect(gain); gain.connect(AudioFX.master);
     oscillator.start(); oscillator.stop(AudioFX.context.currentTime + duration);
   },
+  scream: function () {
+    if (!AudioFX.context) { return; }
+    var oscillator = AudioFX.context.createOscillator();
+    var gain = AudioFX.context.createGain();
+    var now = AudioFX.context.currentTime;
+    oscillator.type = "sawtooth";
+    oscillator.frequency.setValueAtTime(460, now);
+    oscillator.frequency.exponentialRampToValueAtTime(1180, now + 0.45);
+    oscillator.frequency.exponentialRampToValueAtTime(700, now + 1.05);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.22, now + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+    oscillator.connect(gain); gain.connect(AudioFX.master);
+    oscillator.start(now); oscillator.stop(now + 1.1);
+  },
   music: function () {
     var notes = [110, 110, 146.83, 123.47, 164.81, 146.83, 98, 123.47];
     AudioFX.tone(notes[AudioFX.musicStep % notes.length], 0.24, "triangle", 0.04);

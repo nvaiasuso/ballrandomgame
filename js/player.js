@@ -7,6 +7,7 @@ var Player = {
   hasGun: false, gunLevel: 0, weaponType: "sidearm", ammo: CONFIG.PLAYER_START_AMMO, weaponTimer: 0, invincible: false, invincibleTimer: 0, shootCooldown: 0,
   speedMultiplier: 1, jumpMultiplier: 1, gravityMultiplier: 1, damageMultiplier: 1, gambleEffect: "",
   health: CONFIG.PLAYER_HEALTH, maxHealth: CONFIG.PLAYER_HEALTH, hitTimer: 0, secretInvincibility: false, secretHealthTimer: 0,
+  secretBuff: false, secretSprayTimer: 0, secretSprayAngle: 0,
   dashTimer: 0, dashCooldown: 0, dashDirection: 1, dashing: false,
   scaleX: 1, scaleY: 1, muzzleFlash: 0, perks: [], shieldMultiplier: 1, piercing: false, ricochet: false, adaptiveAim: false,
   shards: 0, deathTimer: 0, deathVy: 0, deathAnimating: false
@@ -17,6 +18,7 @@ Player.reset = function () {
   Player.onGround = false; Player.angle = 0; Player.aimAngle = 0;
   Player.hasGun = false; Player.gunLevel = 0; Player.weaponType = "sidearm"; Player.ammo = CONFIG.PLAYER_START_AMMO; Player.weaponTimer = 0;
   Player.invincible = Player.secretInvincibility; Player.invincibleTimer = Player.secretInvincibility ? 999999 : 0; Player.shootCooldown = 0;
+  Player.secretSprayTimer = 0;
   Player.speedMultiplier = 1; Player.jumpMultiplier = 1; Player.gravityMultiplier = 1;
   Player.damageMultiplier = 1; Player.gambleEffect = "";
   Player.shieldMultiplier = 1; Player.piercing = false; Player.ricochet = false; Player.adaptiveAim = false;
@@ -130,6 +132,7 @@ Player.update = function () {
   if ((Player.x < CONFIG.TILE * 2 || Player.x > Level.pixelWidth() - CONFIG.TILE * 2) && Math.abs(Player.vx) < 0.2) { Game.habits.corners++; }
 
   if (Player.shootCooldown > 0) { Player.shootCooldown--; }
+  if (Player.secretSprayTimer > 0) { Player.secretSprayTimer--; }
   if (Player.muzzleFlash > 0) { Player.muzzleFlash--; }
   if (Player.weaponTimer > 0) {
     Player.weaponTimer--;
@@ -139,7 +142,10 @@ Player.update = function () {
     Player.invincibleTimer--;
     if (Player.invincibleTimer === 0) { Player.invincible = false; }
   }
-  if (Player.hasGun && Player.ammo > 0 && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
+  if (Player.secretBuff && (Input.shoot || Input.mouseDown)) {
+    Player.secretSprayTimer = 5;
+    Enemy.secretSpray();
+  } else if (Player.hasGun && Player.ammo > 0 && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
     Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Game.habits.shots++; Player.shootCooldown = Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "burst" ? 30 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "grenade" ? 28 : CONFIG.PLAYER_SHOOT_COOLDOWN)));
     if (Player.ammo === 0) { Player.hasGun = false; Player.gunLevel = 0; Game.showMessage("CLICK. Empty weapon."); }
   } else if (Game.tutorial.active && Game.tutorial.step === 1 && (Input.shoot || Input.mouseDown)) {

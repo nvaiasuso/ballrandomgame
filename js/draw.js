@@ -2,8 +2,15 @@
    draw.js  --  EVERYTHING YOU CAN SEE.
    ===================================================================== */
 
-var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true };
-Draw.setup = function () { Draw.canvas = document.getElementById("game"); Draw.ctx = Draw.canvas.getContext("2d"); };
+var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true, secretImage: null, secretImageReady: false };
+Draw.setup = function () {
+  Draw.canvas = document.getElementById("game");
+  Draw.ctx = Draw.canvas.getContext("2d");
+  Draw.secretImage = new Image();
+  Draw.secretImage.onload = function () { Draw.secretImageReady = true; };
+  Draw.secretImage.onerror = function () { Draw.secretImageReady = false; };
+  Draw.secretImage.src = "images.png";
+};
 Draw.updateCamera = function () {
   var lookTarget = Math.abs(Player.vx) > 0.1 ? (Player.vx > 0 ? CONFIG.CAMERA_LOOKAHEAD : -CONFIG.CAMERA_LOOKAHEAD) : 0;
   Draw.cameraLookAhead += (lookTarget - Draw.cameraLookAhead) * CONFIG.CAMERA_LAG;
@@ -28,7 +35,7 @@ Draw.everything = function () {
   var shakeY = Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
   ctx.save();
   ctx.translate(-Draw.cameraX + shakeX, shakeY);
-  Draw.world(); Enemy.draw(); Draw.player(); ctx.restore();
+  Draw.world(); Enemy.draw(); Draw.player(); Draw.secretSpray(); ctx.restore();
   if (Level.dark) {
     ctx.save();
     ctx.fillStyle = "rgba(5, 7, 13, 0.9)";
@@ -76,6 +83,7 @@ Draw.everything = function () {
     ctx.textAlign = "left";
   }
   Draw.hud();
+  if (Game.secretBuffCinematic) { Draw.secretCinematic(); }
 };
 Draw.hud = function () {
   var ctx = Draw.ctx;
@@ -177,6 +185,7 @@ Draw.lava = function (x, y, size) { var ctx = Draw.ctx; var wave = Math.sin(Game
 Draw.finish = function (x, y, size) { var ctx = Draw.ctx; var wave = Math.sin(Game.frame / 10 + x / 20) * 4; ctx.fillStyle = "#000000"; ctx.fillRect(x + size / 2 - 2, y, 4, size); ctx.beginPath(); ctx.moveTo(x + size / 2 + 2, y + 4); ctx.lineTo(x + size - 4 + wave, y + 12); ctx.lineTo(x + size / 2 + 2, y + 20); ctx.closePath(); ctx.fill(); };
 Draw.player = function () {
   var ctx = Draw.ctx, r = CONFIG.PLAYER_RADIUS, centerX = Player.x + CONFIG.PLAYER_SIZE / 2, centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  if (Game.secretBuffCinematic && Game.secretBuffCinematic.frame < 40) { centerY -= Game.secretBuffCinematic.frame * 2; }
   ctx.save(); ctx.translate(centerX, centerY); ctx.scale(Player.scaleX, Player.scaleY);
   ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#000000"; ctx.lineWidth = CONFIG.LINE_WIDTH; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   var dotX = centerX + Math.cos(Player.aimAngle) * r * CONFIG.DOT_DISTANCE, dotY = centerY + Math.sin(Player.aimAngle) * r * CONFIG.DOT_DISTANCE;
@@ -198,4 +207,78 @@ Draw.player = function () {
     ctx.lineWidth = 5;
     ctx.beginPath(); ctx.arc(centerX, centerY, r + 10, 0, Math.PI * 2); ctx.stroke();
   }
+  if (Player.secretBuff) {
+    for (var orbit = 0; orbit < 4; orbit++) {
+      var orbitAngle = Game.frame * 0.08 + orbit * Math.PI / 2;
+      var orbitX = Math.cos(orbitAngle) * 30;
+      var orbitY = Math.sin(orbitAngle) * 22;
+      if (Draw.secretImageReady) { Draw.drawSecretImage(orbitX - 12, orbitY - 12, 24); }
+      else {
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(orbitX - 4, orbitY - 4, 8, 8);
+        ctx.strokeStyle = "#111111"; ctx.lineWidth = 1; ctx.strokeRect(orbitX - 4, orbitY - 4, 8, 8);
+      }
+    }
+  }
+  if (Game.secretBuffCinematic && Game.secretBuffCinematic.frame < 40) {
+    var bobX = Math.sin(Game.secretBuffCinematic.frame * 0.32) * 26;
+    if (Draw.secretImageReady) { Draw.drawSecretImage(bobX - 16, -34, 32); }
+    else {
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(bobX - 5, -24, 10, 10);
+      ctx.strokeStyle = "#111111"; ctx.lineWidth = 1; ctx.strokeRect(bobX - 5, -24, 10, 10);
+    }
+  }
+};
+
+Draw.drawSecretImage = function (x, y, maxSize) {
+  if (!Draw.secretImageReady) { return; }
+  var scale = Math.min(maxSize / Draw.secretImage.naturalWidth, maxSize / Draw.secretImage.naturalHeight);
+  var width = Draw.secretImage.naturalWidth * scale;
+  var height = Draw.secretImage.naturalHeight * scale;
+  Draw.ctx.drawImage(Draw.secretImage, x + (maxSize - width) / 2, y + (maxSize - height) / 2, width, height);
+};
+
+Draw.secretSpray = function () {
+  if (!Player.secretBuff || Player.secretSprayTimer <= 0) { return; }
+  var ctx = Draw.ctx;
+  var length = 620;
+  var originX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var originY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  var angle = Player.secretSprayAngle || Player.aimAngle;
+  ctx.save(); ctx.translate(originX, originY); ctx.rotate(angle);
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(length, -92); ctx.quadraticCurveTo(length + 28, 0, length, 92); ctx.lineTo(0, 8); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  for (var particle = 0; particle < 24; particle++) {
+    var distance = ((Game.frame * 13 + particle * 37) % length);
+    var spread = (Math.sin(Game.frame * 0.31 + particle * 8) * 0.5 + 0.5) * (8 + distance * 0.14);
+    ctx.beginPath(); ctx.arc(distance, spread * (particle % 2 ? 1 : -1), 2 + (particle % 3), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+};
+
+Draw.secretCinematic = function () {
+  var ctx = Draw.ctx;
+  var scene = Game.secretBuffCinematic;
+  var centerX = Player.x + CONFIG.PLAYER_SIZE / 2 - Draw.cameraX;
+  var centerY = Player.y + CONFIG.PLAYER_SIZE / 2 - Math.min(80, scene.frame * 2);
+  if (scene.frame >= 40) { ctx.fillStyle = "#000000"; ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H); }
+  if (scene.frame < 40) { return; }
+  var corners = [[22, 22], [CONFIG.CANVAS_W - 22, 22], [22, CONFIG.CANVAS_H - 22], [CONFIG.CANVAS_W - 22, CONFIG.CANVAS_H - 22]];
+  ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.fillStyle = "#ffffff"; ctx.lineWidth = 2;
+  for (var corner = 0; corner < corners.length; corner++) {
+    var point = corners[corner];
+    ctx.beginPath(); ctx.moveTo(point[0], point[1]); ctx.lineTo(centerX, centerY); ctx.stroke();
+    if (Draw.secretImageReady) { Draw.drawSecretImage(point[0] - 24, point[1] - 24, 48); }
+    else {
+      ctx.strokeRect(point[0] - 14, point[1] - 14, 28, 28);
+      ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("NO IMAGE", point[0], point[1] + 3);
+    }
+  }
+  for (var ring = 0; ring < 6; ring++) {
+    var radius = (scene.frame * 5 + ring * 24) % 150;
+    ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(centerX, centerY, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.font = "bold 26px monospace"; ctx.textAlign = "center"; ctx.fillText("SCREEE!", CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H - 32);
+  ctx.restore();
 };

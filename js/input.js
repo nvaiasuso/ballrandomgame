@@ -19,8 +19,23 @@ var Input = {
   dash: false,
   endless: false,
   pause: false,
-  invincibility: false
-  ,secretInvincibility: false
+  invincibility: false,
+  secretInvincibility: false,
+  secretComboProgress: 0,
+  secretBuffActivation: false,
+  secretCombo: ["up", "up", "down", "down", "left", "left", "right", "right"],
+};
+
+Input.registerSecretDirection = function (direction) {
+  if (Input.secretCombo[Input.secretComboProgress] === direction) {
+    Input.secretComboProgress++;
+    if (Input.secretComboProgress === Input.secretCombo.length) {
+      Input.secretComboProgress = 0;
+      Input.secretBuffActivation = true;
+    }
+  } else {
+    Input.secretComboProgress = direction === Input.secretCombo[0] ? 1 : 0;
+  }
 };
 
 Input.updateMouse = function (event) {
@@ -45,6 +60,9 @@ window.addEventListener("mouseup", function (event) {
 
 window.addEventListener("keydown", function (event) {
   AudioFX.unlock();
+  if (!event.repeat && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(event.key) >= 0) {
+    Input.registerSecretDirection(event.key.slice(5).toLowerCase());
+  }
   if (event.shiftKey && (event.code === "KeyQ" || event.key === "q" || event.key === "Q")) {
     Input.adminSkip = true;
     event.preventDefault();

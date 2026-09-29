@@ -12,6 +12,9 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - X or K - fire after collecting a gun
 - R - restart the level
 - G or the GAMBLE button - pause and risk a random buff or debuff once per level
+- Secret buff - enter UP, UP, DOWN, DOWN, LEFT, LEFT, RIGHT, RIGHT with the arrow keys
+
+The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. Its activation freezes play for a short cinematic. Add an `images.png` file beside `index.html` to use your own image in the effect; the game scales it to fit and shows a `NO IMAGE` fallback when it is absent.
 
 The game now includes seven levels. The later levels include enemies, gaps, spikes, platforms, and stair sections.
 

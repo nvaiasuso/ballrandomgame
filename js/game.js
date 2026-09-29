@@ -37,9 +37,20 @@ var Game = {
   roundNumber: 0,
   checkpoint: { level: -1, x: 0, y: 0, nextX: 640 },
   tutorial: { active: false, step: 0, wrongTimer: 0 },
+  easyMode: false,
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
-};  
-  
+};
+Game.secretBuffCinematic = null;
+
+Game.activateSecretBuff = function () {
+  if (Player.secretBuff) { Input.secretBuffActivation = false; return; }
+  if (Game.mode !== "playing") { return; }
+  Input.secretBuffActivation = false;
+  Game.secretBuffCinematic = { frame: 0, duration: 150 };
+  Game.mode = "secret-activation";
+  AudioFX.scream();
+};
+
 Game.startLevel = function (levelNumber, preserveCheckpoint) {
   Game.transitioning = false;
   Game.shopOpened = false;
@@ -53,7 +64,7 @@ Game.startLevel = function (levelNumber, preserveCheckpoint) {
   if (!preserveCheckpoint || Game.checkpoint.level !== levelNumber) {
     Game.checkpoint = { level: levelNumber, x: 0, y: 0, nextX: 640 };
   }
-  Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL, step: 0, wrongTimer: 0 };
+  Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL && !Game.easyMode, step: 0, wrongTimer: 0 };
   Game.randomMode = false;
   Game.endless = false;
   Game.gambleUsed = false;
@@ -61,7 +72,23 @@ Game.startLevel = function (levelNumber, preserveCheckpoint) {
   Game.resetIntensity();
   Game.introTimer = 95;
   Draw.cameraSnap = true;
-  Level.build(levelNumber);  
+  Level.build(levelNumber);
+  if (Game.easyMode && levelNumber === CONFIG.START_LEVEL) {
+    Game.enemySpeedScale = 0.6;
+    var enemySpawns = [];
+    for (var row = 0; row < CONFIG.ROWS; row++) {
+      for (var col = 0; col < Level.cols; col++) {
+        if (CONFIG.ENEMY_TYPES[Level.charAt(col, row)]) {
+          enemySpawns.push({ col: col, row: row });
+        }
+      }
+    }
+    if (enemySpawns.length > 2) {
+      for (var i = 2; i < enemySpawns.length; i++) {
+        Level.setCharAt(enemySpawns[i].col, enemySpawns[i].row, ".");
+      }
+    }
+  }
   Enemy.reset();  
   Player.reset();  
   if (preserveCheckpoint && Game.checkpoint.level === levelNumber && Game.checkpoint.x > 0) {
@@ -344,11 +371,35 @@ Game.die = function (reason) {
 Game.update = function () {  
     Game.frame++;
 
+  if (Input.secretBuffActivation && Game.mode === "playing") { Game.activateSecretBuff(); }
+  if (Game.secretBuffCinematic) {
+    Game.secretBuffCinematic.frame++;
+    if (Game.secretBuffCinematic.frame >= Game.secretBuffCinematic.duration) {
+      Game.secretBuffCinematic = null;
+      Game.mode = "playing";
+      Player.secretBuff = true;
+      Player.secretInvincibility = true;
+      Player.invincible = true;
+      Player.invincibleTimer = 999999;
+      Game.showMessage("SECRET BUFF! Nearby enemies fall. Hold fire to unleash the white spray.");
+    }
+    return;
+  }
+
   if (Input.secretInvincibility) {
     Input.secretInvincibility = false;
     Player.secretInvincibility = !Player.secretInvincibility;
     Player.invincible = Player.secretInvincibility;
     Player.invincibleTimer = Player.secretInvincibility ? 999999 : 0;
+  }
+
+  if ((Game.mode === "shop" || Game.mode === "gamble" || Game.mode === "guide") &&
+      (Input.jump || Input.shoot || Input.pause || Input.restart || Input.gamble || Input.invincibility)) {
+    if (Game.mode === "shop") { Game.closeShop(); }
+    else if (Game.mode === "gamble") { Game.closeGamble(); }
+    else if (Game.mode === "guide") { Game.closeGuide(); }
+    Input.jump = false; Input.shoot = false; Input.pause = false; Input.restart = false; Input.gamble = false; Input.invincibility = false;
+    return;
   }
 
   if (Game.mode === "guide") {
