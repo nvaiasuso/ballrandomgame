@@ -236,6 +236,11 @@ Enemy.findGunPickup = function (e) {
   for (var i = 0; i < Enemy.pickups.length; i++) {
     var pickup = Enemy.pickups[i];
     if (!pickup.weaponType || (pickup.level || 1) < (e.weaponPower || 0)) { continue; }
+    var reserved = false;
+    for (var allyIndex = 0; allyIndex < Enemy.list.length; allyIndex++) {
+      if (Enemy.list[allyIndex] !== e && Enemy.list[allyIndex].targetPickup === pickup) { reserved = true; break; }
+    }
+    if (reserved) { continue; }
     if (Math.abs(pickup.y + pickup.size / 2 - enemyCenterY) > CONFIG.TILE) { continue; }
     var pickupCenterX = pickup.x + pickup.size / 2;
     var dx = pickupCenterX - enemyCenterX;
@@ -338,7 +343,8 @@ Enemy.chase = function (e) {
   var nextX = e.x + e.dir * chaseSpeed;
   var blocked = Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
   var edge = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
-  var spike = Collide.hitsSpike(nextX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+  var spikeLookAhead = Math.max(e.speed * 6, 12);
+  var spike = Collide.hitsSpike(nextX + e.dir * spikeLookAhead, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
   if (blocked) {
     if (!lockedJump) { e.dir = -e.dir; e.pathTimer = 0; }
     return;
@@ -382,7 +388,7 @@ Enemy.kill = function (index, stomped) {
   var weaponType = dropWeapons[Math.floor(Math.random() * dropWeapons.length)];
   if (e.type === "v" || e.type === "r") { level = 2; }
   if (e.splitter) { level = 2; }
-  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: 1, weaponType: weaponType, life: 600 });
+  Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 - 10, y: e.y + 4, size: 20, level: level, weaponType: weaponType, life: 600 });
   if (Game.combo > 0 && Game.combo % 3 === 0) {
     Enemy.pickups.push({ x: e.x + CONFIG.ENEMY_SIZE / 2 + 16, y: e.y + 4, size: 16, type: "weaponShard", life: 600 });
   }
@@ -663,6 +669,38 @@ Enemy.updatePlayerBullets = function () {
   }
 };
 
+Enemy.separateCrowdedEnemies = function () {
+  var size = CONFIG.ENEMY_SIZE;
+  var moved = true;
+  var pass = 0;
+  while (moved && pass < Enemy.list.length) {
+    moved = false;
+    pass++;
+    for (var firstIndex = 0; firstIndex < Enemy.list.length; firstIndex++) {
+      var first = Enemy.list[firstIndex];
+      if (!first || first.dead) { continue; }
+      for (var secondIndex = firstIndex + 1; secondIndex < Enemy.list.length; secondIndex++) {
+        var second = Enemy.list[secondIndex];
+        if (!second || second.dead || first.y + size <= second.y || second.y + size <= first.y) { continue; }
+        var overlap = Math.min(first.x + size, second.x + size) - Math.max(first.x, second.x);
+        if (overlap <= 0) { continue; }
+        var direction = first.x === second.x ? (first.id < second.id ? 1 : -1) : (second.x > first.x ? 1 : -1);
+        var push = Math.ceil(overlap / 2) + 1;
+        var firstX = first.x - direction * push;
+        var secondX = second.x + direction * push;
+        var firstSafe = !Collide.hitsSolid(firstX, first.y, size, size) &&
+          !Collide.hitsSpike(firstX, first.y + size - 8, size, 10) && !Collide.hitsLava(firstX, first.y + size - 4, size, 8);
+        var secondSafe = !Collide.hitsSolid(secondX, second.y, size, size) &&
+          !Collide.hitsSpike(secondX, second.y + size - 8, size, 10) && !Collide.hitsLava(secondX, second.y + size - 4, size, 8);
+        if (firstSafe && first.onGround) { firstSafe = Collide.hitsSolid(firstX, first.y + size + 2, size, 2); }
+        if (secondSafe && second.onGround) { secondSafe = Collide.hitsSolid(secondX, second.y + size + 2, size, 2); }
+        if (firstSafe) { first.x = firstX; moved = true; }
+        if (secondSafe) { second.x = secondX; moved = true; }
+      }
+    }
+  }
+};
+
 Enemy.update = function () {
   Enemy.updateEffects();
   Enemy.updateCompanion();
@@ -685,6 +723,7 @@ Enemy.update = function () {
   }
   Enemy.checkShop();
   Enemy.updatePressure();
+  Enemy.separateCrowdedEnemies();
   Enemy.checkPlayerContact();
   for (var i = 0; i < Enemy.list.length; i++) {
     var e = Enemy.list[i];
@@ -766,7 +805,7 @@ Enemy.update = function () {
       if (e.targetPickup) { e.dir = e.targetPickup.x < e.x ? -1 : 1; }
       var nextX = e.x + e.dir * e.speed * Game.enemySpeedScale;
       var willFall = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
-      var patrolSpike = Collide.hitsSpike(nextX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
+      var patrolSpike = Collide.hitsSpike(nextX + e.dir * Math.max(e.speed * 6, 12), e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
       if (Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.dir = -e.dir; }
       else if ((willFall || patrolSpike) && e.jumpTimer > 0 && !e.onGround) {
         e.dir = e.jumpDirection;
@@ -1153,7 +1192,7 @@ Enemy.spawnAmbush = function (x) {
   for (var i = 0; i < 3; i++) {
     var typeKey = types[Math.floor(Math.random() * types.length)];
     var type = CONFIG.ENEMY_TYPES[typeKey];
-    var enemyX = x + (i - 1) * 28;
+    var enemyX = x + (i - 1) * (CONFIG.ENEMY_SIZE + 8);
     if (Collide.hitsSolid(enemyX, 0, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { continue; }
     Enemy.list.push({ id: Enemy.nextId++, x: enemyX, y: 0, vy: 0, state: "run", timer: 0, ambush: true, ambushActive: true, alertDelay: 0, dir: enemyX < Player.x ? 1 : -1,
       onGround: false, alerted: true, shootTimer: type.shootFrames, health: type.health,
