@@ -9,7 +9,7 @@ Draw.setup = function () {
   Draw.secretImage = new Image();
   Draw.secretImage.onload = function () { Draw.secretImageReady = true; };
   Draw.secretImage.onerror = function () { Draw.secretImageReady = false; };
-  Draw.secretImage.src = "images.png";
+  Draw.secretImage.src = "image.png";
 };
 Draw.updateCamera = function () {
   var lookTarget = Math.abs(Player.vx) > 0.1 ? (Player.vx > 0 ? CONFIG.CAMERA_LOOKAHEAD : -CONFIG.CAMERA_LOOKAHEAD) : 0;
@@ -35,7 +35,7 @@ Draw.everything = function () {
   var shakeY = Enemy.cinematic.shake > 0 ? (Math.random() - 0.5) * Enemy.cinematic.shake : 0;
   ctx.save();
   ctx.translate(-Draw.cameraX + shakeX, shakeY);
-  Draw.world(); Enemy.draw(); Draw.player(); Draw.secretSpray(); ctx.restore();
+  Draw.world(); Enemy.draw(); Draw.player(); Draw.companion(); Draw.secretSpray(); ctx.restore();
   if (Level.dark) {
     ctx.save();
     ctx.fillStyle = "rgba(5, 7, 13, 0.9)";
@@ -212,20 +212,12 @@ Draw.player = function () {
       var orbitAngle = Game.frame * 0.08 + orbit * Math.PI / 2;
       var orbitX = Math.cos(orbitAngle) * 30;
       var orbitY = Math.sin(orbitAngle) * 22;
-      if (Draw.secretImageReady) { Draw.drawSecretImage(orbitX - 12, orbitY - 12, 24); }
-      else {
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(orbitX - 4, orbitY - 4, 8, 8);
-        ctx.strokeStyle = "#111111"; ctx.lineWidth = 1; ctx.strokeRect(orbitX - 4, orbitY - 4, 8, 8);
-      }
+      Draw.drawSecretSprite(orbitX, orbitY, 14);
     }
   }
   if (Game.secretBuffCinematic && Game.secretBuffCinematic.frame < 40) {
     var bobX = Math.sin(Game.secretBuffCinematic.frame * 0.32) * 26;
-    if (Draw.secretImageReady) { Draw.drawSecretImage(bobX - 16, -34, 32); }
-    else {
-      ctx.fillStyle = "#ffffff"; ctx.fillRect(bobX - 5, -24, 10, 10);
-      ctx.strokeStyle = "#111111"; ctx.lineWidth = 1; ctx.strokeRect(bobX - 5, -24, 10, 10);
-    }
+    Draw.drawSecretSprite(bobX, -20, 30);
   }
 };
 
@@ -237,6 +229,49 @@ Draw.drawSecretImage = function (x, y, maxSize) {
   Draw.ctx.drawImage(Draw.secretImage, x + (maxSize - width) / 2, y + (maxSize - height) / 2, width, height);
 };
 
+Draw.drawSecretSprite = function (centerX, centerY, size) {
+  var ctx = Draw.ctx;
+  if (Draw.secretImageReady) {
+    Draw.drawSecretImage(centerX - size / 2, centerY - size / 2, size);
+    return;
+  }
+  var pulse = 1 + Math.sin(Game.frame / 5 + centerX) * 0.08;
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(Game.frame / 30);
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = "#54f5ff";
+  ctx.shadowBlur = size * 0.8;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(0, 0, size * 0.46, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "#20cbd8";
+  ctx.lineWidth = Math.max(2, size * 0.1);
+  ctx.stroke();
+  ctx.fillStyle = "#14232b";
+  ctx.beginPath();
+  ctx.arc(size * 0.12, -size * 0.04, size * 0.1, 0, Math.PI * 2);
+  ctx.arc(size * 0.28, -size * 0.04, size * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+};
+
+Draw.companion = function () {
+  if (!Player.secretBuff || !Enemy.companion) { return; }
+  var companion = Enemy.companion;
+  var bob = Math.sin(Game.frame / 7) * 3;
+  var ctx = Draw.ctx;
+  ctx.strokeStyle = "rgba(38, 220, 232, 0.45)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(companion.x + 3, companion.y + 4 + bob);
+  ctx.lineTo(Player.x + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2);
+  ctx.stroke();
+  Draw.drawSecretSprite(companion.x, companion.y + bob, 30);
+};
+
 Draw.secretSpray = function () {
   if (!Player.secretBuff || Player.secretSprayTimer <= 0) { return; }
   var ctx = Draw.ctx;
@@ -245,9 +280,16 @@ Draw.secretSpray = function () {
   var originY = Player.y + CONFIG.PLAYER_SIZE / 2;
   var angle = Player.secretSprayAngle || Player.aimAngle;
   ctx.save(); ctx.translate(originX, originY); ctx.rotate(angle);
-  ctx.globalAlpha = 0.75;
-  ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(length, -92); ctx.quadraticCurveTo(length + 28, 0, length, 92); ctx.lineTo(0, 8); ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 1;
+  ctx.shadowColor = "#18c7d6";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "rgba(18, 190, 208, 0.42)";
+  ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(length, -92); ctx.quadraticCurveTo(length + 28, 0, length, 92); ctx.lineTo(0, 8); ctx.closePath(); ctx.fill();
+  ctx.shadowColor = "#ffffff";
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+  ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(length, -34); ctx.quadraticCurveTo(length + 20, 0, length, 34); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#ffffff";
   for (var particle = 0; particle < 24; particle++) {
     var distance = ((Game.frame * 13 + particle * 37) % length);
     var spread = (Math.sin(Game.frame * 0.31 + particle * 8) * 0.5 + 0.5) * (8 + distance * 0.14);
@@ -261,24 +303,27 @@ Draw.secretCinematic = function () {
   var scene = Game.secretBuffCinematic;
   var centerX = Player.x + CONFIG.PLAYER_SIZE / 2 - Draw.cameraX;
   var centerY = Player.y + CONFIG.PLAYER_SIZE / 2 - Math.min(80, scene.frame * 2);
-  if (scene.frame >= 40) { ctx.fillStyle = "#000000"; ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H); }
+  ctx.fillStyle = scene.frame >= 40 ? "rgba(3, 9, 16, 0.96)" : "rgba(3, 9, 16, 0.42)";
+  ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
+  ctx.fillStyle = "#05090f";
+  ctx.fillRect(0, 0, CONFIG.CANVAS_W, 24);
+  ctx.fillRect(0, CONFIG.CANVAS_H - 24, CONFIG.CANVAS_W, 24);
   if (scene.frame < 40) { return; }
   var corners = [[22, 22], [CONFIG.CANVAS_W - 22, 22], [22, CONFIG.CANVAS_H - 22], [CONFIG.CANVAS_W - 22, CONFIG.CANVAS_H - 22]];
   ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.fillStyle = "#ffffff"; ctx.lineWidth = 2;
   for (var corner = 0; corner < corners.length; corner++) {
     var point = corners[corner];
     ctx.beginPath(); ctx.moveTo(point[0], point[1]); ctx.lineTo(centerX, centerY); ctx.stroke();
-    if (Draw.secretImageReady) { Draw.drawSecretImage(point[0] - 24, point[1] - 24, 48); }
-    else {
-      ctx.strokeRect(point[0] - 14, point[1] - 14, 28, 28);
-      ctx.font = "8px monospace"; ctx.textAlign = "center"; ctx.fillText("NO IMAGE", point[0], point[1] + 3);
-    }
+    Draw.drawSecretSprite(point[0], point[1], 44);
   }
   for (var ring = 0; ring < 6; ring++) {
     var radius = (scene.frame * 5 + ring * 24) % 150;
     ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.beginPath(); ctx.arc(centerX, centerY, 18, 0, Math.PI * 2); ctx.fill();
-  ctx.font = "bold 26px monospace"; ctx.textAlign = "center"; ctx.fillText("SCREEE!", CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H - 32);
+  ctx.fillStyle = "#54f5ff";
+  ctx.font = "bold 16px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("THE ORBITAL AWAKENS", CONFIG.CANVAS_W / 2, CONFIG.CANVAS_H - 34);
   ctx.restore();
 };

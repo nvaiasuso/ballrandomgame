@@ -24,22 +24,20 @@ var Level = {
 
 // --- STEP 1: read the two data files ----------------------------------
 Level.loadData = function (whenDone) {
-  fetch("data/pieces.json")
-    .then(function (r) { return r.json(); })
-    .then(function (piecesFile) {
-      Level.pieces = piecesFile;
-      return fetch("data/levels.json");
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (levelsFile) {
-      Level.levels = levelsFile.levels;
-      whenDone();
-    })
-    .catch(function (error) {
-      document.getElementById("message").textContent =
-        "Could not load the level files. Check data/pieces.json and data/levels.json.";
-      console.error(error);
+  function loadJson(path) {
+    return fetch(path).then(function (response) {
+      if (!response.ok) { throw new Error(path + " returned HTTP " + response.status); }
+      return response.json();
     });
+  }
+  Promise.all([loadJson("data/pieces.json"), loadJson("data/levels.json")]).then(function (files) {
+    Level.pieces = files[0];
+    Level.levels = files[1].levels;
+    whenDone();
+  }, function (error) {
+    document.getElementById("message").textContent = "Could not load level data: " + error.message;
+    console.error(error);
+  });
 };
 
 // --- STEP 2: glue the pieces together ---------------------------------
