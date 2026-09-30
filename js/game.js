@@ -32,6 +32,7 @@ var Game = {
   keepPerks: false,
   pendingLevel: 0,
   upgradeChoices: [],
+  prejoinUpgrades: [],
   transitioning: false,
   shopOpened: false,
   roundNumber: 0,
@@ -70,11 +71,15 @@ Game.startLevel = function (levelNumber, preserveCheckpoint) {
   Game.gambleUsed = false;
   if (levelNumber === CONFIG.START_LEVEL && !Game.keepPerks) { Player.perks = []; }
   Game.resetIntensity();
+  var earlyEnemySpeeds = [0.6, 0.68, 0.76, 0.84];
+  if (levelNumber >= 0 && levelNumber < earlyEnemySpeeds.length) {
+    Game.enemySpeedScale = earlyEnemySpeeds[levelNumber];
+  }
   Game.introTimer = 95;
   Draw.cameraSnap = true;
   Level.build(levelNumber);
   if (Game.easyMode && levelNumber === CONFIG.START_LEVEL) {
-    Game.enemySpeedScale = 0.6;
+    Game.enemySpeedScale = Math.min(Game.enemySpeedScale, 0.55);
     var enemySpawns = [];
     for (var row = 0; row < CONFIG.ROWS; row++) {
       for (var col = 0; col < Level.cols; col++) {
@@ -91,6 +96,12 @@ Game.startLevel = function (levelNumber, preserveCheckpoint) {
   }
   Enemy.reset();  
   Player.reset();  
+  for (var prejoinIndex = 0; prejoinIndex < Game.prejoinUpgrades.length; prejoinIndex++) {
+    if (Game.prejoinUpgrades[prejoinIndex] === "speed") { Player.speedMultiplier += 0.12; }
+    if (Game.prejoinUpgrades[prejoinIndex] === "jump") { Player.jumpMultiplier += 0.1; }
+    if (Game.prejoinUpgrades[prejoinIndex] === "health") { Player.maxHealth++; Player.health = Player.maxHealth; }
+  }
+  Game.prejoinUpgrades = [];
   if (preserveCheckpoint && Game.checkpoint.level === levelNumber && Game.checkpoint.x > 0) {
     Player.x = Game.checkpoint.x;
     Player.y = Game.checkpoint.y;
@@ -179,9 +190,11 @@ Game.closePanels = function () {
   var gamblePanel = document.getElementById("gamble-panel");
   var shopPanel = document.getElementById("shop-panel");
   var guidePanel = document.getElementById("guide-panel");
+  var levelSelectPanel = document.getElementById("level-select-panel");
   if (gamblePanel) { gamblePanel.hidden = true; gamblePanel.style.display = "none"; }
   if (shopPanel) { shopPanel.hidden = true; shopPanel.style.display = "none"; }
   if (guidePanel) { guidePanel.hidden = true; guidePanel.style.display = "none"; }
+  if (levelSelectPanel) { levelSelectPanel.hidden = true; levelSelectPanel.style.display = "none"; }
 };
 
 Game.openGuide = function () {
@@ -197,6 +210,41 @@ Game.closeGuide = function () {
   if (panel) { panel.hidden = true; panel.style.display = "none"; }
   Game.mode = "playing";
   Game.showMessage("Back to the fight.");
+};
+
+Game.openLevelPicker = function () {
+  if (Game.mode !== "playing") { return; }
+  var panel = document.getElementById("level-select-panel");
+  var select = document.getElementById("level-select");
+  if (!panel || !select) { return; }
+  select.innerHTML = "";
+  for (var i = 0; i < Level.levels.length; i++) {
+    var option = document.createElement("option");
+    option.value = i;
+    option.textContent = "LEVEL " + (i + 1) + " - " + Level.levels[i].name;
+    select.appendChild(option);
+  }
+  select.value = String(Game.levelNumber);
+  panel.hidden = false;
+  panel.style.display = "grid";
+  Game.mode = "level-select";
+  Game.updateShopText();
+};
+
+Game.closeLevelPicker = function () {
+  if (Game.mode !== "level-select") { return; }
+  var panel = document.getElementById("level-select-panel");
+  if (panel) { panel.hidden = true; panel.style.display = "none"; }
+  Game.mode = "playing";
+  Game.showMessage("Back to the fight.");
+};
+
+Game.enterSelectedLevel = function () {
+  var select = document.getElementById("level-select");
+  var levelNumber = select ? Number(select.value) : -1;
+  if (!Number.isInteger(levelNumber) || levelNumber < 0 || levelNumber >= Level.levels.length) { return; }
+  Game.startLevel(levelNumber);
+  Game.showMessage("Entering " + Level.name + ".");
 };
 
 Game.setTutorial = function (text) {
@@ -316,7 +364,10 @@ Game.closeShop = function () {
 };
 
 Game.updateShopText = function () {
-  document.getElementById("shop-shards").textContent = "SHARDS: " + Player.shards;
+  var shopShards = document.getElementById("shop-shards");
+  var prejoinShards = document.getElementById("prejoin-shards");
+  if (shopShards) { shopShards.textContent = "SHARDS: " + Player.shards; }
+  if (prejoinShards) { prejoinShards.textContent = "SHARDS: " + Player.shards; }
 };
 
 Game.buyShopUpgrade = function (upgrade) {
@@ -324,6 +375,12 @@ Game.buyShopUpgrade = function (upgrade) {
   var cost = costs[upgrade];
   if (!cost || Player.shards < cost) { Game.showMessage("Not enough weapon shards."); return; }
   Player.shards -= cost;
+  if (Game.mode === "level-select") {
+    Game.prejoinUpgrades.push(upgrade);
+    Game.showMessage("Upgrade queued for your next level.");
+    Game.updateShopText();
+    return;
+  }
   if (upgrade === "speed") { Player.speedMultiplier += 0.12; Game.showMessage("TUNED WHEELS: speed +12%."); }
   if (upgrade === "jump") { Player.jumpMultiplier += 0.1; Game.showMessage("SPRING COIL: jump +10%."); }
   if (upgrade === "health") { Player.maxHealth++; Player.health = Player.maxHealth; Game.showMessage("REPAIR KIT: maximum health +1."); }
@@ -407,8 +464,13 @@ Game.update = function () {
     return;
   }
   
-  if (Input.adminSkip) {
-    Input.adminSkip = false;
+  if (Input.adminLevelSelect) {
+    Input.adminLevelSelect = false;
+    Game.openLevelPicker();
+    return;
+  }
+  if (Input.adminSkipPending && Date.now() - Input.adminSkipAt > 400) {
+    Input.adminSkipPending = false;
     Game.startLevel((Game.levelNumber + 1) % Level.levels.length);
     Game.showMessage("ADMIN: skipped to Level " + (Game.levelNumber + 1));
     return;

@@ -12,11 +12,14 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - X or K - fire after collecting a gun
 - R - restart the level
 - G or the GAMBLE button - pause and risk a random buff or debuff once per level
+- GUIDE - open the field guide
+- Press SHIFT+Q twice to choose a level; press it once to skip ahead
+- Spend carried shards on speed, jump, or health upgrades before entering a selected level
 - Secret buff - enter UP, UP, DOWN, DOWN, LEFT, LEFT, RIGHT, RIGHT with the arrow keys
 
-The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. A glowing companion follows you and fires homing shots. Its activation freezes play for a short cinematic. Add an `image.png` file beside `index.html` to use your own image in the effect; an animated cyan sprite appears when the image is absent.
+The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. A glowing companion follows you and fires homing shots. Its activation freezes play for a short cinematic. Add an `image.png` file beside `index.html` to use your own image in the effect; a white orb with cyan trim appears when the image is absent.
 
-The campaign has 38 stages, including enemy arenas, gaps, spikes, moving platforms, stairs, and three dedicated parkour levels.
+The campaign has 43 stages, including a one-screen Micro Sprint, four additional routes, enemy arenas, gaps, spikes, moving platforms, stairs, and three dedicated parkour levels.
 
 ## Where everything lives
 

@@ -14,6 +14,9 @@ var Input = {
   mouseDown: false,
   versionToggle: false,
   adminSkip: false,
+  adminSkipPending: false,
+  adminSkipAt: 0,
+  adminLevelSelect: false,
   adminRandom: false,
   gamble: false,
   dash: false,
@@ -64,7 +67,14 @@ window.addEventListener("keydown", function (event) {
     Input.registerSecretDirection(event.key.slice(5).toLowerCase());
   }
   if (event.shiftKey && (event.code === "KeyQ" || event.key === "q" || event.key === "Q")) {
-    Input.adminSkip = true;
+    var skipTime = Date.now();
+    if (!event.repeat && Input.adminSkipPending && skipTime - Input.adminSkipAt <= 400) {
+      Input.adminSkipPending = false;
+      Input.adminLevelSelect = true;
+    } else {
+      Input.adminSkipPending = true;
+      Input.adminSkipAt = skipTime;
+    }
     event.preventDefault();
     return;
   }

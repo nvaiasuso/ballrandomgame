@@ -152,6 +152,26 @@
     {
       "name": "Parkour 3 - Skyline",
       "pieces": ["start", "stairs", "hard_gap3", "moving_platform", "platform", "spikepit", "finish"]
+    },
+    {
+      "name": "Micro Sprint",
+      "pieces": ["start", "finish"]
+    },
+    {
+      "name": "Treetop Training",
+      "pieces": ["start", "stairs", "platform", "gap", "finish"]
+    },
+    {
+      "name": "Switchback Run",
+      "pieces": ["start", "step", "platform", "spikes", "finish"]
+    },
+    {
+      "name": "Rail Yard",
+      "pieces": ["start", "moving_platform", "gap", "enemy_line", "finish"]
+    },
+    {
+      "name": "Foundry Gauntlet",
+      "pieces": ["start", "crumble_run", "charger_run", "spikepit", "finish"]
     }
   ]
 }

@@ -62,14 +62,22 @@ canvas {
 }
 
 #tutorial-message {
-  color: #d94b32;
-  font-size: 15px;
+  width: min(760px, calc(100% - 24px));
+  box-sizing: border-box;
+  color: #18212b;
+  background: #ffcf56;
+  border: 2px solid #18212b;
+  padding: 9px 12px;
+  font-size: 14px;
   font-weight: bold;
-  min-height: 22px;
-  margin: 4px auto 0;
+  min-height: 40px;
+  margin: 8px auto 0;
 }
 
-#gamble-button, #pause-button, #fullscreen-button, #gamble-panel button {
+#tutorial-message:empty { display: none; }
+
+#guide-button, #gamble-button, #pause-button, #fullscreen-button,
+#gamble-panel button, #guide-panel button, #level-select-panel button {
   border: 2px solid #18212b;
   background: #ffcf56;
   color: #18212b;
@@ -79,7 +87,7 @@ canvas {
   cursor: pointer;
 }
 
-#gamble-button, #pause-button, #fullscreen-button { display: block; }
+#guide-button, #gamble-button, #pause-button, #fullscreen-button { display: block; }
 #gamble-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 #game-shell:fullscreen {
@@ -125,6 +133,7 @@ canvas {
 }
 
 #game-shell:fullscreen #gamble-button,
+#game-shell:fullscreen #guide-button,
 #game-shell:fullscreen #pause-button,
 #game-shell:fullscreen #fullscreen-button {
   font-size: 9px;
@@ -155,7 +164,8 @@ canvas {
 
 #game-shell:fullscreen #gamble-panel,
 #game-shell:fullscreen #shop-panel,
-#game-shell:fullscreen #guide-panel {
+#game-shell:fullscreen #guide-panel,
+#game-shell:fullscreen #level-select-panel {
   position: fixed;
   z-index: 20;
 }
@@ -170,6 +180,37 @@ canvas {
 }
 
 #guide-panel[hidden] { display: none !important; }
+
+#level-select-panel {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 43, 0.86);
+  z-index: 5;
+}
+
+#level-select-panel[hidden] { display: none !important; }
+
+.level-select-box {
+  width: min(420px, calc(100% - 28px));
+  max-height: 84vh;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 22px 26px;
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  text-align: left;
+}
+
+.level-select-box h2 { margin: 6px 0 14px; font-size: 24px; }
+.level-select-box label, .level-upgrades { font-size: 12px; font-weight: bold; }
+.level-select-box select { display: block; width: 100%; margin: 6px 0 12px; padding: 9px; font: bold 14px monospace; }
+.level-upgrades { margin: 14px 0 6px; }
+.level-upgrade-buttons { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.level-select-box button { width: 100%; margin-top: 8px; }
+.level-select-box #cancel-level { background: #fffdf8; }
 
 .guide-box {
   width: min(680px, calc(100% - 28px));

@@ -10,6 +10,8 @@
 
 Draw.setup();
 
+document.getElementById("guide-button").addEventListener("click", function () { Game.openGuide(); });
+document.getElementById("guide-close").addEventListener("click", function () { Game.closeGuide(); });
 document.getElementById("gamble-button").addEventListener("click", function () { Game.openGamble(); });
 document.getElementById("pause-button").addEventListener("click", function () { Game.togglePause(); });
 document.getElementById("fullscreen-button").addEventListener("click", function () {
@@ -29,6 +31,11 @@ document.getElementById("shop-speed").addEventListener("click", function () { Ga
 document.getElementById("shop-jump").addEventListener("click", function () { Game.buyShopUpgrade("jump"); });
 document.getElementById("shop-health").addEventListener("click", function () { Game.buyShopUpgrade("health"); });
 document.getElementById("shop-close").addEventListener("click", function () { Game.closeShop(); });
+document.getElementById("prejoin-speed").addEventListener("click", function () { Game.buyShopUpgrade("speed"); });
+document.getElementById("prejoin-jump").addEventListener("click", function () { Game.buyShopUpgrade("jump"); });
+document.getElementById("prejoin-health").addEventListener("click", function () { Game.buyShopUpgrade("health"); });
+document.getElementById("enter-level").addEventListener("click", function () { Game.enterSelectedLevel(); });
+document.getElementById("cancel-level").addEventListener("click", function () { Game.closeLevelPicker(); });
 
 Level.loadData(function () {
   Game.easyMode = false;

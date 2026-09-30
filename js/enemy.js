@@ -224,61 +224,99 @@ Enemy.findPathDirectionTo = function (e, targetX, targetY) {
 };
 
 Enemy.findPathDirection = function (e) {
+  if (!Player.onGround && Player.y < e.y) { return 0; }
   return Enemy.findPathDirectionTo(e, Player.x, Player.y);
 };
 
-Enemy.findGunPickup = function (e) {
+Enemy.findBestPickup = function (e) {
   if (e.turret || e.flying || e.suicide) { return null; }
   var enemyCenterX = e.x + CONFIG.ENEMY_SIZE / 2;
   var enemyCenterY = e.y + CONFIG.ENEMY_SIZE / 2;
   var nearest = null;
-  var nearestDistance = 220 * 220;
+  var bestScore = 0;
+  var playerDistance = Math.hypot(Player.x - e.x, Player.y - e.y);
   for (var i = 0; i < Enemy.pickups.length; i++) {
     var pickup = Enemy.pickups[i];
-    if (!pickup.weaponType || (pickup.level || 1) < (e.weaponPower || 0)) { continue; }
+    var isGun = !!pickup.weaponType;
+    var isShard = pickup.type === "weaponShard";
+    var isShield = pickup.type === "invincibility";
+    if (!isGun && !isShard && !isShield) { continue; }
+    if (isGun && (pickup.level || 1) < (e.weaponPower || 0)) { continue; }
+    if (isShard && (e.upgradeCount || 0) >= 5) { continue; }
+    if (isShield && e.powerupShieldTimer > 0) { continue; }
     var reserved = false;
     for (var allyIndex = 0; allyIndex < Enemy.list.length; allyIndex++) {
       if (Enemy.list[allyIndex] !== e && Enemy.list[allyIndex].targetPickup === pickup) { reserved = true; break; }
     }
     if (reserved) { continue; }
-    if (Math.abs(pickup.y + pickup.size / 2 - enemyCenterY) > CONFIG.TILE) { continue; }
+    if (Math.abs(pickup.y + pickup.size / 2 - enemyCenterY) > CONFIG.TILE * 2) { continue; }
     var pickupCenterX = pickup.x + pickup.size / 2;
     var dx = pickupCenterX - enemyCenterX;
     var dy = pickup.y + pickup.size / 2 - enemyCenterY;
-    var distance = dx * dx + dy * dy;
-    if (distance >= nearestDistance) { continue; }
+    var distance = Math.hypot(dx, dy);
+    var score = 0;
+    if (isGun) {
+      var tier = pickup.level || 1;
+      score = (e.weaponPower || 0) === 0 ? 5 : (tier > e.weaponPower ? 4.5 + tier - e.weaponPower : (e.weaponType !== pickup.weaponType ? 2.8 : 1.2));
+      if (pickup.weaponType === "shotgun" && playerDistance < 190) { score += 1.2; }
+      if (pickup.weaponType === "laser" && playerDistance > 180) { score += 0.8; }
+      if (pickup.weaponType === "homing" && playerDistance > 120) { score += 0.6; }
+      if (pickup.weaponType === "grenade" && playerDistance < 90) { score -= 1.5; }
+    } else if (isShard) {
+      score = 5.5 - (e.upgradeCount || 0) * 0.7;
+    } else if (isShield) {
+      score = e.health < e.maxHealth ? 5.5 + (e.maxHealth - e.health) : (playerDistance < 180 ? 3.4 : 1.4);
+    }
+    score -= distance / 180;
+    if (pickup.life !== undefined && pickup.life < 120) { score += 0.6; }
+    if (score <= bestScore || distance > 280) { continue; }
     var direction = dx < 0 ? -1 : 1;
     var reachable = true;
+    var lastGroundedX = e.x;
     for (var step = 0; step <= Math.abs(dx); step += 8) {
       var probeX = e.x + direction * step;
+      var spikeAhead = Collide.hitsSpike(probeX, e.y + CONFIG.ENEMY_SIZE - 8, CONFIG.ENEMY_SIZE, 10);
+      var lavaAhead = Collide.hitsLava(probeX, e.y + CONFIG.ENEMY_SIZE - 4, CONFIG.ENEMY_SIZE, 8);
+      var groundedAhead = Collide.hitsSolid(probeX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+      var missingFloor = step < Math.abs(dx) && !groundedAhead;
+      var takeoff = { x: lastGroundedX, y: e.y, speed: e.speed, type: e.type };
       if (Collide.hitsSolid(probeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE) ||
-          Collide.hitsSpike(probeX, e.y + CONFIG.ENEMY_SIZE - 8, CONFIG.ENEMY_SIZE, 10) ||
-          Collide.hitsLava(probeX, e.y + CONFIG.ENEMY_SIZE - 4, CONFIG.ENEMY_SIZE, 8) ||
-          (step < Math.abs(dx) && !Collide.hitsSolid(probeX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2))) {
+          ((spikeAhead || lavaAhead || missingFloor) && !Enemy.canJumpAcross(takeoff, direction))) {
         reachable = false;
         break;
       }
+      if (groundedAhead && !spikeAhead && !lavaAhead) { lastGroundedX = probeX; }
     }
-    if (reachable) { nearest = pickup; nearestDistance = distance; }
+    if (reachable) { nearest = pickup; bestScore = score; }
   }
   return nearest;
 };
 
-Enemy.collectGunPickup = function (e) {
+Enemy.collectPickup = function (e) {
   var pickupIndex = Enemy.pickups.indexOf(e.targetPickup);
   if (pickupIndex < 0) { return false; }
   var pickup = Enemy.pickups[pickupIndex];
   if (e.x + CONFIG.ENEMY_SIZE <= pickup.x || e.x >= pickup.x + pickup.size ||
       e.y + CONFIG.ENEMY_SIZE <= pickup.y || e.y >= pickup.y + pickup.size) { return false; }
-  e.weaponType = pickup.weaponType;
-  e.weaponPower = pickup.level || 1;
-  e.shootFrames = Math.max(8, Math.floor(e.shootFrames * 0.7));
-  e.bulletSpeed = Math.min(12, e.bulletSpeed + 1);
-  e.shootTimer = Math.min(e.shootTimer, 8);
+  if (pickup.type === "invincibility") {
+    e.powerupShieldTimer = CONFIG.INVINCIBILITY_TIME;
+  } else {
+    if (pickup.type === "weaponShard") {
+      e.weaponType = e.weaponType || "burst";
+      e.weaponPower = Math.min(5, (e.weaponPower || 0) + 1);
+    } else {
+      e.weaponType = pickup.weaponType;
+      e.weaponPower = Math.max(e.weaponPower || 0, pickup.level || 1);
+    }
+    e.upgradeCount = Math.min(5, (e.upgradeCount || 0) + 1);
+    e.shootFrames = Math.max(6, Math.floor(e.shootFrames * 0.82));
+    e.bulletSpeed = Math.min(15, e.bulletSpeed + 1);
+    e.shootTimer = Math.min(e.shootTimer, 8);
+  }
   e.targetPickup = null;
   Enemy.pickups.splice(pickupIndex, 1);
   for (var spark = 0; spark < 10; spark++) {
-    Enemy.effects.push({ x: e.x + CONFIG.ENEMY_SIZE / 2, y: e.y + CONFIG.ENEMY_SIZE / 2, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 22, color: "#54f5ff", size: 4 });
+    Enemy.effects.push({ x: e.x + CONFIG.ENEMY_SIZE / 2, y: e.y + CONFIG.ENEMY_SIZE / 2, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 22, color: pickup.type === "invincibility" ? "#ffcf56" : "#54f5ff", size: 4 });
   }
   return true;
 };
@@ -293,7 +331,7 @@ Enemy.chase = function (e) {
   var targetDirection = targetX < enemyCenterX ? -1 : 1;
   var lockedJump = e.jumpTimer > 0 && !e.onGround;
   if (lockedJump) { targetDirection = e.jumpDirection; }
-  if (!e.flying && !pickupTarget && e.onGround && Math.abs(Player.y - e.y) > CONFIG.TILE * 0.8 && Math.abs(Player.x - e.x) < 180) {
+  if (!e.flying && !pickupTarget && Player.onGround && e.onGround && Math.abs(Player.y - e.y) > CONFIG.TILE * 0.8 && Math.abs(Player.x - e.x) < 180) {
     var verticalJumpDir = Player.x < e.x ? -1 : 1;
     var jumpProbeX = e.x + verticalJumpDir * Math.max(18, e.speed * 4);
     var jumpBlocked = Collide.hitsSolid(jumpProbeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
@@ -307,7 +345,7 @@ Enemy.chase = function (e) {
   if (!e.flying && !lockedJump && !pickupTarget) {
     if ((e.pathTimer || 0) <= 0) { e.pathDirection = Enemy.findPathDirection(e); e.pathTimer = 18; }
     else { e.pathTimer--; }
-    if (e.pathDirection === 2 && e.onGround) {
+    if (e.pathDirection === 2 && e.onGround && Player.onGround) {
       Enemy.startJump(e, targetDirection, 0.9);
       lockedJump = true;
       targetDirection = e.jumpDirection;
@@ -366,7 +404,7 @@ Enemy.checkPlayerContact = function () {
       Player.y + CONFIG.PLAYER_SIZE > e.y && Player.y < e.y + CONFIG.ENEMY_SIZE;
     var landingY = e.y - CONFIG.PLAYER_SIZE;
     var landingBlocked = Collide.hitsSolid(Player.x, landingY, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE);
-    if (overlaps && !e.invulnerable && !Player.dashing && Player.vy >= 0 && Player.y + CONFIG.PLAYER_SIZE - e.y < CONFIG.TILE / 2 && !landingBlocked) {
+    if (overlaps && !e.invulnerable && !(e.powerupShieldTimer > 0) && !Player.dashing && Player.vy >= 0 && Player.y + CONFIG.PLAYER_SIZE - e.y < CONFIG.TILE / 2 && !landingBlocked) {
       Enemy.reflectBullets(Player.x + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, 58);
       Player.y = e.y - CONFIG.PLAYER_SIZE;
       Player.vy = -CONFIG.JUMP_POWER * 0.55;
@@ -471,7 +509,7 @@ Enemy.updateEffects = function () {
 
 Enemy.damage = function (index) {
   var e = Enemy.list[index];
-  if (!e || e.dead || e.stunned || e.invulnerable || e.alertDelay > 0) { return; }
+  if (!e || e.dead || e.stunned || e.invulnerable || e.powerupShieldTimer > 0 || e.alertDelay > 0) { return; }
   Game.impact(3, 0);
   Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 4);
   e.health -= arguments[1] || 1;
@@ -701,6 +739,24 @@ Enemy.separateCrowdedEnemies = function () {
   }
 };
 
+Enemy.assignScavengingDistractions = function (scavenger) {
+  if (!scavenger.targetPickup) { return; }
+  scavenger.scavenger = true;
+  var assigned = 0;
+  for (var i = 0; i < Enemy.list.length && assigned < 2; i++) {
+    var ally = Enemy.list[i];
+    if (!ally || ally === scavenger || ally.dead || ally.turret || ally.flying || ally.targetPickup || ally.scavenger) { continue; }
+    var dx = ally.x - scavenger.x;
+    var dy = ally.y - scavenger.y;
+    if (dx * dx + dy * dy > 320 * 320) { continue; }
+    ally.distractionTarget = scavenger.id;
+    ally.state = "run";
+    ally.alerted = true;
+    ally.shootTimer = Math.min(ally.shootTimer, 10);
+    assigned++;
+  }
+};
+
 Enemy.update = function () {
   Enemy.updateEffects();
   Enemy.updateCompanion();
@@ -723,7 +779,6 @@ Enemy.update = function () {
   }
   Enemy.checkShop();
   Enemy.updatePressure();
-  Enemy.separateCrowdedEnemies();
   Enemy.checkPlayerContact();
   for (var i = 0; i < Enemy.list.length; i++) {
     var e = Enemy.list[i];
@@ -733,13 +788,25 @@ Enemy.update = function () {
       i--;
       continue;
     }
+    if (e.powerupShieldTimer > 0) { e.powerupShieldTimer--; }
     if (Enemy.touchesSpike(e)) {
       Enemy.kill(i, false);
       i--;
       continue;
     }
-    e.targetPickup = Enemy.findGunPickup(e);
-    Enemy.collectGunPickup(e);
+    if (e.distractionTarget) {
+      var scavenger = null;
+      for (var scavengerIndex = 0; scavengerIndex < Enemy.list.length; scavengerIndex++) {
+        if (Enemy.list[scavengerIndex].id === e.distractionTarget && !Enemy.list[scavengerIndex].dead) {
+          scavenger = Enemy.list[scavengerIndex];
+          break;
+        }
+      }
+      if (!scavenger || !scavenger.targetPickup) { e.distractionTarget = null; }
+    }
+    e.targetPickup = e.distractionTarget ? null : Enemy.findBestPickup(e);
+    if (e.targetPickup) { Enemy.assignScavengingDistractions(e); }
+    Enemy.collectPickup(e);
     if (e.fallingGuy && e.attackDelay > 0) {
       e.attackDelay--;
       Enemy.physics(e);
@@ -1185,6 +1252,7 @@ Enemy.spawnMinion = function (x) {
     pathDirection: 0, pathTimer: 0
   });
   Enemy.fallingSpawnCount++;
+  Enemy.separateCrowdedEnemies();
 };
 
 Enemy.spawnAmbush = function (x) {
@@ -1203,6 +1271,7 @@ Enemy.spawnAmbush = function (x) {
       role: "rush", flanker: false, flankSide: 0, coverX: null, coverScanTimer: 0,
       pathDirection: 0, pathTimer: 0, stunned: false, stunTimer: 0 });
   }
+  Enemy.separateCrowdedEnemies();
   Enemy.cinematic.flash = 5;
   Game.showMessage("AMBUSH!");
 };
@@ -1303,6 +1372,7 @@ Enemy.spawnSplitterMinion = function (x, y) {
     chargeTimer: 0, slamCooldown: 0, healTimer: 90, regenTimer: 0,
     role: "rush", flanker: false, flankSide: 0, coverX: null, coverScanTimer: 0,
     pathDirection: 0, pathTimer: 0 });
+  Enemy.separateCrowdedEnemies();
 };
 
 Enemy.updateHazards = function () {
@@ -1619,6 +1689,11 @@ Enemy.draw = function () {
     var e = Enemy.list[i];
     ctx.beginPath(); ctx.arc(e.x + CONFIG.ENEMY_SIZE / 2, e.y + CONFIG.ENEMY_SIZE / 2, CONFIG.ENEMY_SIZE / 2, 0, Math.PI * 2);
     ctx.fillStyle = e.color || "#ffffff"; ctx.fill(); ctx.lineWidth = CONFIG.LINE_WIDTH; ctx.strokeStyle = "#000000"; ctx.stroke();
+    if (e.powerupShieldTimer > 0) {
+      ctx.strokeStyle = "#ffcf56";
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(e.x + CONFIG.ENEMY_SIZE / 2, e.y + CONFIG.ENEMY_SIZE / 2, CONFIG.ENEMY_SIZE / 2 + 9, 0, Math.PI * 2); ctx.stroke();
+    }
     if (e.weaponPower > 0) {
       ctx.strokeStyle = "#20cbd8";
       ctx.lineWidth = 3;
