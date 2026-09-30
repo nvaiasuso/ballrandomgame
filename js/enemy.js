@@ -182,6 +182,12 @@ Enemy.touchesSpike = function (e) {
   return false;
 };
 
+Enemy.hasStableFooting = function (e, x) {
+  var footY = e.y + CONFIG.ENEMY_SIZE + 3;
+  return Collide.hitsSolid(x + 2, footY, 2, 2) &&
+    Collide.hitsSolid(x + CONFIG.ENEMY_SIZE - 4, footY, 2, 2);
+};
+
 Enemy.routeDirection = function (e, preferred) {
   var choices = [preferred, -preferred];
   for (var i = 0; i < choices.length; i++) {
@@ -189,10 +195,10 @@ Enemy.routeDirection = function (e, preferred) {
     var probeX = e.x + direction * Math.max(e.speed * 3, 12);
     var blocked = Collide.hitsSolid(probeX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
     var spikeAhead = Collide.hitsSpike(probeX, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
-    var voidAhead = !Collide.hitsSolid(probeX, e.y + CONFIG.ENEMY_SIZE + 4, CONFIG.ENEMY_SIZE, 4);
+    var voidAhead = !Enemy.hasStableFooting(e, probeX);
     if (!blocked && ((!spikeAhead && !voidAhead) || Enemy.canJumpAcross(e, direction))) { return direction; }
   }
-  return preferred;
+  return 0;
 };
 
 Enemy.findPathDirectionTo = function (e, targetX, targetY) {
@@ -352,7 +358,10 @@ Enemy.chase = function (e) {
     }
     if (e.pathDirection && Math.abs(e.pathDirection) === 1) { targetDirection = e.pathDirection; }
   }
-  if (!e.flying && !e.ambush && !lockedJump) { targetDirection = Enemy.routeDirection(e, targetDirection); }
+  if (!e.flying && !e.ambush && !lockedJump) {
+    targetDirection = Enemy.routeDirection(e, targetDirection);
+    if (targetDirection === 0) { e.dir = 0; e.pathTimer = 8; return; }
+  }
   e.shieldTurnTimer = 0;
   e.dir = targetDirection;
   if (e.role === "suppress") {
@@ -380,7 +389,7 @@ Enemy.chase = function (e) {
   chaseSpeed *= Game.enemySpeedScale;
   var nextX = e.x + e.dir * chaseSpeed;
   var blocked = Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE);
-  var edge = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+  var edge = !Enemy.hasStableFooting(e, nextX);
   var spikeLookAhead = Math.max(e.speed * 6, 12);
   var spike = Collide.hitsSpike(nextX + e.dir * spikeLookAhead, e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
   if (blocked) {
@@ -870,8 +879,9 @@ Enemy.update = function () {
     }
     if (e.state === "patrol") {
       if (e.targetPickup) { e.dir = e.targetPickup.x < e.x ? -1 : 1; }
+      else if (e.dir === 0) { e.dir = Enemy.routeDirection(e, Player.x < e.x ? -1 : 1); }
       var nextX = e.x + e.dir * e.speed * Game.enemySpeedScale;
-      var willFall = !Collide.hitsSolid(nextX, e.y + CONFIG.ENEMY_SIZE + 2, CONFIG.ENEMY_SIZE, 2);
+      var willFall = !Enemy.hasStableFooting(e, nextX);
       var patrolSpike = Collide.hitsSpike(nextX + e.dir * Math.max(e.speed * 6, 12), e.y + CONFIG.ENEMY_SIZE - 10, CONFIG.ENEMY_SIZE, 10);
       if (Collide.hitsSolid(nextX, e.y, CONFIG.ENEMY_SIZE, CONFIG.ENEMY_SIZE)) { e.dir = -e.dir; }
       else if ((willFall || patrolSpike) && e.jumpTimer > 0 && !e.onGround) {
@@ -879,7 +889,7 @@ Enemy.update = function () {
         e.x += e.dir * e.speed * Game.enemySpeedScale;
       } else if (willFall || patrolSpike) {
         if (e.onGround && Enemy.canJumpAcross(e, e.dir)) { Enemy.startJump(e, e.dir); }
-        else { e.dir = -e.dir; }
+        else { e.dir = Enemy.routeDirection(e, -e.dir); }
       }
       else { e.x = nextX; }
       Enemy.physics(e);

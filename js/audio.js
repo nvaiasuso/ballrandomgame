@@ -48,7 +48,7 @@ var AudioFX = {
     oscillator.type = "sawtooth";
     oscillator.frequency.setValueAtTime(460, now);
     oscillator.frequency.exponentialRampToValueAtTime(1180, now + 0.45);
-    oscillator.frequency.exponentialRampToValueAtTime(700, now + 1.05);
+    oscillator.frequency.exponentialRamp;
     gain.gain.setValueAtTime(0.001, now);
     gain.gain.linearRampToValueAtTime(0.22, now + 0.12);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);

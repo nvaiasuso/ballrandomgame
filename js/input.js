@@ -12,6 +12,7 @@ var Input = {
   mouseX: 0,
   mouseY: 0,
   mouseDown: false,
+  mobileMode: false,
   versionToggle: false,
   adminSkip: false,
   adminSkipPending: false,
@@ -60,6 +61,61 @@ window.addEventListener("mousedown", function (event) {
 window.addEventListener("mouseup", function (event) {
   if (event.button === 0) { Input.mouseDown = false; }
 });
+
+Input.setMobileMode = function (enabled) {
+  Input.mobileMode = !!enabled;
+  var controls = document.getElementById("touch-controls");
+  var toggle = document.getElementById("mobile-toggle");
+  if (controls) { controls.hidden = !Input.mobileMode; }
+  if (toggle) {
+    toggle.setAttribute("aria-pressed", String(Input.mobileMode));
+    toggle.textContent = Input.mobileMode ? "MOBILE MODE ON" : "MOBILE MODE OFF";
+  }
+  document.body.classList.toggle("mobile-mode", Input.mobileMode);
+  if (!Input.mobileMode) {
+    Input.left = false; Input.right = false; Input.jump = false; Input.dash = false; Input.shoot = false;
+  }
+  try { localStorage.setItem("rollerMobileMode", Input.mobileMode ? "on" : "off"); } catch (error) {}
+};
+
+Input.restoreMobileMode = function () {
+  var enabled = false;
+  try { enabled = localStorage.getItem("rollerMobileMode") === "on"; } catch (error) {}
+  Input.setMobileMode(enabled);
+};
+
+Input.setupMobileControls = function () {
+  var touchControls = document.getElementById("touch-controls");
+  if (touchControls) {
+    touchControls.addEventListener("pointerdown", function (event) {
+      var button = event.target.closest("[data-touch-action]");
+      if (!button || !Input.mobileMode) { return; }
+      event.preventDefault();
+      Input[button.getAttribute("data-touch-action")] = true;
+      if (button.setPointerCapture) { button.setPointerCapture(event.pointerId); }
+    });
+    function releaseTouchAction(event) {
+      var button = event.target.closest("[data-touch-action]");
+      if (button) { Input[button.getAttribute("data-touch-action")] = false; }
+    }
+    touchControls.addEventListener("pointerup", releaseTouchAction);
+    touchControls.addEventListener("pointercancel", releaseTouchAction);
+    touchControls.addEventListener("lostpointercapture", releaseTouchAction);
+  }
+  if (Draw.canvas) {
+    Draw.canvas.addEventListener("pointerdown", function (event) {
+      if (!Input.mobileMode || event.pointerType !== "touch") { return; }
+      event.preventDefault();
+      Input.updateMouse(event);
+    });
+    Draw.canvas.addEventListener("pointermove", function (event) {
+      if (Input.mobileMode && event.pointerType === "touch" && event.buttons) {
+        event.preventDefault();
+        Input.updateMouse(event);
+      }
+    });
+  }
+};
 
 window.addEventListener("keydown", function (event) {
   AudioFX.unlock();

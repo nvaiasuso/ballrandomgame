@@ -9,6 +9,8 @@
    ===================================================================== */
 
 Draw.setup();
+Input.setupMobileControls();
+Input.restoreMobileMode();
 
 document.getElementById("guide-button").addEventListener("click", function () { Game.openGuide(); });
 document.getElementById("guide-close").addEventListener("click", function () { Game.closeGuide(); });
@@ -18,6 +20,9 @@ document.getElementById("fullscreen-button").addEventListener("click", function 
   var shell = document.getElementById("game-shell");
   if (document.fullscreenElement) { document.exitFullscreen(); }
   else if (shell.requestFullscreen) { shell.requestFullscreen(); }
+});
+document.getElementById("mobile-toggle").addEventListener("click", function () {
+  Input.setMobileMode(!Input.mobileMode);
 });
 document.addEventListener("fullscreenchange", function () {
   var button = document.getElementById("fullscreen-button");

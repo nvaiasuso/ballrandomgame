@@ -24,8 +24,20 @@
     <button id="gamble-button" type="button">GAMBLE [G]</button>
     <button id="pause-button" type="button">PAUSE [P]</button>
     <button id="fullscreen-button" type="button" aria-label="Enter fullscreen">FULLSCREEN</button>
+    <button id="mobile-toggle" type="button" aria-pressed="false">MOBILE MODE OFF</button>
   </div>
   <canvas id="game" width="800" height="400"></canvas>
+  <div id="touch-controls" hidden aria-label="Touch game controls">
+    <div class="touch-movement">
+      <button type="button" data-touch-action="left" aria-label="Move left">LEFT</button>
+      <button type="button" data-touch-action="right" aria-label="Move right">RIGHT</button>
+    </div>
+    <div class="touch-actions">
+      <button type="button" data-touch-action="jump" aria-label="Jump">JUMP</button>
+      <button type="button" data-touch-action="dash" aria-label="Dash">DASH</button>
+      <button type="button" data-touch-action="shoot" aria-label="Fire">FIRE</button>
+    </div>
+  </div>
   <p id="message">Loading...</p>
   <p id="tutorial-message" aria-live="polite"></p>
   <p class="controls">
@@ -62,7 +74,7 @@
       <div class="guide-copy">
         <p><strong>Moving around.</strong> Use A/D or the arrow keys to roll left and right. Use Space, Up, or W to jump. Hold Shift to dash forward and become briefly untouchable.</p>
         <p><strong>Getting past danger.</strong> Jump over spikes and lava. Cracked blocks crumble after you stand on them, and moving platforms can carry you.</p>
-        <p><strong>Fighting enemies.</strong> Stomp enemies from above or shoot them with a collected gun. Aim with the mouse and click, or press X. Ammo runs out.</p>
+        <p><strong>Fighting enemies.</strong> Stomp enemies from above or shoot them with a collected gun. Aim with the mouse and click, or tap the playfield in mobile mode. Ammo runs out.</p>
         <p><strong>Weapons.</strong> You can find sidearms, shotguns, lasers, grenade launchers, homing guns, burst rifles, and boomerang guns.</p>
         <p><strong>Health.</strong> Hits cost health. Press R to restart after you die.</p>
         <p><strong>Combos.</strong> Defeat enemies quickly to build combos and trigger brief slow motion.</p>

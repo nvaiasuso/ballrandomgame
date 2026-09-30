@@ -76,7 +76,7 @@ canvas {
 
 #tutorial-message:empty { display: none; }
 
-#guide-button, #gamble-button, #pause-button, #fullscreen-button,
+#guide-button, #gamble-button, #pause-button, #fullscreen-button, #mobile-toggle,
 #gamble-panel button, #guide-panel button, #level-select-panel button {
   border: 2px solid #18212b;
   background: #ffcf56;
@@ -87,8 +87,35 @@ canvas {
   cursor: pointer;
 }
 
-#guide-button, #gamble-button, #pause-button, #fullscreen-button { display: block; }
+#guide-button, #gamble-button, #pause-button, #fullscreen-button, #mobile-toggle { display: block; }
 #gamble-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+#touch-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 800px;
+  margin: 10px auto;
+  touch-action: none;
+  user-select: none;
+}
+
+#touch-controls[hidden] { display: none !important; }
+.touch-movement, .touch-actions { display: flex; gap: 8px; }
+#touch-controls button {
+  min-width: 68px;
+  min-height: 60px;
+  border: 2px solid #18212b;
+  background: #ffffff;
+  color: #18212b;
+  font: bold 12px monospace;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#touch-controls button:active { background: #5ce1e6; }
+body.mobile-mode canvas { touch-action: none; }
 
 #game-shell:fullscreen {
   background: #f2efe8;
@@ -133,6 +160,7 @@ canvas {
 }
 
 #game-shell:fullscreen #gamble-button,
+#game-shell:fullscreen #mobile-toggle,
 #game-shell:fullscreen #guide-button,
 #game-shell:fullscreen #pause-button,
 #game-shell:fullscreen #fullscreen-button {
@@ -265,5 +293,10 @@ canvas {
   #hud { gap: 4px; }
   #hud span { min-width: 0; flex: 1; padding: 7px 4px; font-size: 9px; }
   canvas { width: 100%; height: auto; }
+  .game-actions { flex-wrap: wrap; }
+  #touch-controls { justify-content: center; flex-wrap: wrap; }
+  .touch-movement, .touch-actions { flex: 1 1 100%; justify-content: center; }
+  #touch-controls button { flex: 1 1 0; max-width: 120px; min-height: 68px; }
+  #mobile-toggle { min-height: 42px; }
   .controls { line-height: 1.7; }
 }
