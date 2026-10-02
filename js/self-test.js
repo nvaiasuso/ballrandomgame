@@ -121,12 +121,12 @@ SelfTest.runInFrame = function (requestId) {
       assert(Level.grid.length === CONFIG.ROWS, "Level grid has the wrong number of rows.");
       assert(Level.startX >= 0 && Level.startY >= 0, "Player start was not found.");
       assert(Level.finishTiles.length > 0, "No finish flag was loaded.");
-      assert(Level.levels.length === 46, "The full parkour-expanded campaign was not loaded.");
+      assert(Level.levels.length === 49, "The full expanded campaign was not loaded.");
       var parkourLevels = Level.levels.filter(function (level) { return level.name.indexOf("Parkour") === 0; });
       assert(parkourLevels.length === 6 && parkourLevels.every(function (level) {
         return level.pieces.every(function (piece) { return !!Level.pieces[piece]; });
       }), "The new parkour stages or their terrain pieces are missing.");
-      assert(Level.levels.length === 46, "The full parkour-expanded campaign was not loaded.");
+      assert(Level.levels.length === 49, "The full expanded campaign was not loaded.");
       var parkourLevels = Level.levels.filter(function (level) { return level.name.indexOf("Parkour") === 0; });
       assert(parkourLevels.length === 6 && parkourLevels.every(function (level) {
         return level.pieces.every(function (piece) { return !!Level.pieces[piece]; });
@@ -312,13 +312,40 @@ SelfTest.runInFrame = function (requestId) {
       }
     });
 
-    test("Weapons leave capped white screen splats", function () {
+    test("Only the secret spray leaves white screen splats", function () {
       resetGame();
       for (var shot = 0; shot < 60; shot++) { Game.recordPlayerShot(); }
-      assert(Game.screenSplats.length === 14 && Game.splatShotCount === 60, "Shot splats did not accumulate or respect their screen cap.");
+      assert(Game.screenSplats.length === 0 && Game.splatShotCount === 0, "Ordinary weapon fire left screen splats.");
+      Player.secretBuff = true;
+      Player.secretSprayTimer = 5;
+      for (var sprayShot = 0; sprayShot < 60; sprayShot++) { Game.recordPlayerShot(); }
+      assert(Game.screenSplats.length === 14 && Game.splatShotCount === 60, "Secret spray splats did not accumulate or respect their screen cap.");
       Input.handleVisualKey({ key: "y", repeat: false, shiftKey: false, preventDefault: function () {} });
       Game.update();
       assert(Game.screenSplats.length === 0 && Game.splatShotCount === 0, "Y did not wipe screen splats and reset their buildup.");
+    });
+
+    test("Weapon trial levels contain new weapons and enemy types", function () {
+      var weaponLevels = Level.levels.filter(function (level) { return level.name.indexOf("Weapon Trial -") === 0; });
+      assert(weaponLevels.length === 3, "The new weapon trial stages are missing.");
+      var foundWeapons = {};
+      var foundEnemies = {};
+      for (var trialIndex = 0; trialIndex < weaponLevels.length; trialIndex++) {
+        Level.build(Level.levels.indexOf(weaponLevels[trialIndex]));
+        Enemy.reset();
+        for (var pickupIndex = 0; pickupIndex < Enemy.pickups.length; pickupIndex++) {
+          foundWeapons[Enemy.pickups[pickupIndex].weaponType] = true;
+        }
+        for (var enemyIndex = 0; enemyIndex < Enemy.list.length; enemyIndex++) {
+          foundEnemies[Enemy.list[enemyIndex].type] = true;
+        }
+      }
+      assert(foundWeapons.scattergun && foundWeapons.minigun && foundWeapons.homing &&
+        foundWeapons.burst && foundWeapons.boomerang && foundWeapons.piercer && foundWeapons.ricochet,
+        "A weapon trial pickup did not load its weapon.");
+      assert(foundEnemies.x && foundEnemies.q && foundEnemies.u && foundEnemies.l && foundEnemies.a && foundEnemies.p,
+        "The weapon trials are missing their added enemy roster.");
+      resetGame();
     });
 
     test("Piercer weapon penetrates enemies", function () {

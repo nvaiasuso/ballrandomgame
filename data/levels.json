@@ -184,6 +184,18 @@
     {
       "name": "Parkour 6 - Switchback Precision",
       "pieces": ["start", "gap", "platform", "crumble_run", "moving_platform", "spikes", "finish"]
+    },
+    {
+      "name": "Weapon Trial - Scatter Range",
+      "pieces": ["start", "scatter_range", "armory", "enemy_line", "finish"]
+    },
+    {
+      "name": "Weapon Trial - Tracking Vault",
+      "pieces": ["start", "tracking_vault", "moving_platform", "turret_room", "finish"]
+    },
+    {
+      "name": "Weapon Trial - Prototype Lab",
+      "pieces": ["start", "prototype_lab", "charger_run", "splitter_hall", "risk_armory", "finish"]
     }
   ]
 }

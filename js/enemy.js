@@ -46,6 +46,18 @@ Enemy.reset = function () {
   for (var triggerX = CONFIG.AMBUSH_DISTANCE; triggerX < Level.pixelWidth() - CONFIG.TILE * 3; triggerX += CONFIG.AMBUSH_DISTANCE) {
     Enemy.ambushes.push({ x: triggerX, triggered: false });
   }
+  var weaponPickups = {
+    G: { level: 3, weaponType: "laser" },
+    W: { level: 4, weaponType: "shotgun" },
+    R: { level: 4, type: "riskWeapon", weaponType: "grenade" },
+    A: { level: 4, weaponType: "scattergun" },
+    N: { level: 4, weaponType: "minigun" },
+    H: { level: 4, weaponType: "homing" },
+    D: { level: 4, weaponType: "burst" },
+    O: { level: 4, weaponType: "boomerang" },
+    P: { level: 4, weaponType: "piercer" },
+    K: { level: 4, weaponType: "ricochet" }
+  };
   for (var row = 0; row < CONFIG.ROWS; row++) {
     for (var col = 0; col < Level.cols; col++) {
       var enemyType = CONFIG.ENEMY_TYPES[Level.charAt(col, row)];
@@ -80,16 +92,10 @@ Enemy.reset = function () {
         };
         Enemy.setTile(col, row, ".");
       }
-      if (Level.charAt(col, row) === "G") {
-        Enemy.pickups.push({ x: col * CONFIG.TILE + 10, y: row * CONFIG.TILE + 8, size: 20, level: 3, weaponType: "laser" });
-        Enemy.setTile(col, row, ".");
-      }
-      if (Level.charAt(col, row) === "W") {
-        Enemy.pickups.push({ x: col * CONFIG.TILE + 10, y: row * CONFIG.TILE + 8, size: 20, level: 4, weaponType: "shotgun" });
-        Enemy.setTile(col, row, ".");
-      }
-      if (Level.charAt(col, row) === "R") {
-        Enemy.pickups.push({ x: col * CONFIG.TILE + 10, y: row * CONFIG.TILE + 8, size: 20, level: 4, type: "riskWeapon", weaponType: "grenade" });
+      var weaponPickup = weaponPickups[Level.charAt(col, row)];
+      if (weaponPickup) {
+        Enemy.pickups.push({ x: col * CONFIG.TILE + 10, y: row * CONFIG.TILE + 8, size: 20,
+          level: weaponPickup.level, type: weaponPickup.type, weaponType: weaponPickup.weaponType });
         Enemy.setTile(col, row, ".");
       }
       if (Level.charAt(col, row) === "I") {
@@ -1041,6 +1047,7 @@ Enemy.update = function () {
 };
 
 Enemy.secretSpray = function () {
+  Game.recordPlayerShot();
   var originX = Player.x + CONFIG.PLAYER_SIZE / 2;
   var originY = Player.y + CONFIG.PLAYER_SIZE / 2;
   var directionX = Math.cos(Player.aimAngle);

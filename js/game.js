@@ -53,6 +53,7 @@ Game.clearScreenSplats = function () {
 };
 
 Game.recordPlayerShot = function () {
+  if (!Player.secretBuff || Player.secretSprayTimer <= 0) { return; }
   Game.splatShotCount++;
   if (Game.splatShotCount % 4 !== 0) { return; }
   if (Game.screenSplats.length >= 14) { Game.screenSplats.shift(); }
