@@ -15,14 +15,26 @@ Input.restoreMobileMode();
 document.getElementById("guide-button").addEventListener("click", function () { Game.openGuide(); });
 document.getElementById("guide-close").addEventListener("click", function () { Game.closeGuide(); });
 document.getElementById("tutorial-start").addEventListener("click", function () { Tutorial.start(); });
+document.getElementById("tutorial-self-test").addEventListener("click", function () { SelfTest.run(); });
 document.getElementById("tutorial-skip-button").addEventListener("click", function () { Tutorial.skip(); });
 document.getElementById("tutorial-menu-skip").addEventListener("click", function () { Tutorial.skip(); });
+document.getElementById("start-briefing-continue").addEventListener("click", function () {
+  document.getElementById("start-briefing").hidden = true;
+  Tutorial.clearInput();
+  if (!Tutorial.hasCompleted()) { Tutorial.initialize(); }
+  else { Game.mode = "playing"; Game.showMessage("Good luck. Watch the enemy tells."); }
+});
 document.getElementById("gamble-button").addEventListener("click", function () { Game.openGamble(); });
 document.getElementById("pause-button").addEventListener("click", function () { Game.togglePause(); });
 document.getElementById("fullscreen-button").addEventListener("click", function () {
   var shell = document.getElementById("game-shell");
   if (document.fullscreenElement) { document.exitFullscreen(); }
   else if (shell.requestFullscreen) { shell.requestFullscreen(); }
+});
+document.getElementById("self-test-button").addEventListener("click", function () { SelfTest.run(); });
+document.getElementById("self-test-rerun").addEventListener("click", function () { SelfTest.run(); });
+document.getElementById("self-test-close").addEventListener("click", function () {
+  document.getElementById("self-test-panel").hidden = true;
 });
 document.getElementById("mobile-toggle").addEventListener("click", function () {
   Input.setMobileMode(!Input.mobileMode);
@@ -49,6 +61,12 @@ document.getElementById("cancel-level").addEventListener("click", function () { 
 Level.loadData(function () {
   Game.easyMode = false;
   Game.startLevel(CONFIG.START_LEVEL);
-  Tutorial.initialize();
+  var selfTestRequest = new URLSearchParams(window.location.search).get("gameSelfTest");
+  if (selfTestRequest) {
+    SelfTest.runInFrame(selfTestRequest);
+    return;
+  }
+  Game.mode = "briefing";
+  document.getElementById("start-briefing").hidden = false;
   Game.loop();
 });

@@ -70,7 +70,6 @@ Draw.everything = function () {
       ctx.beginPath(); ctx.arc(Player.x - Draw.cameraX + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, 145, 0, Math.PI * 2); ctx.fill();
     }
   }
-  Draw.secretRing(shakeX, shakeY);
   if (Enemy.cinematic.flash > 0) {
     ctx.fillStyle = "rgba(190, 24, 36, " + (Enemy.cinematic.flash / 24) + ")";
     ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
@@ -236,22 +235,6 @@ Draw.player = function () {
     var bobX = Math.sin(Game.secretBuffCinematic.frame * 0.32) * 26;
     Draw.drawSecretSprite(bobX, -20, 46);
   }
-};
-
-Draw.secretRing = function (shakeX, shakeY) {
-  if (!Player.secretBuff) { return; }
-  var ctx = Draw.ctx;
-  var centerX = Player.x - Draw.cameraX + CONFIG.PLAYER_SIZE / 2 + shakeX;
-  var centerY = Player.y + CONFIG.PLAYER_SIZE / 2 + shakeY;
-  var radius = CONFIG.PLAYER_RADIUS + 12 + Math.sin(Game.frame / 8) * 2;
-  ctx.save();
-  ctx.strokeStyle = "#14232b";
-  ctx.lineWidth = 8;
-  ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
 };
 
 Draw.drawSecretImage = function (x, y, maxSize) {

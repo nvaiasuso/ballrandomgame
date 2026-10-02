@@ -32,6 +32,7 @@ var Game = {
   keepPerks: false,
   pendingLevel: 0,
   balanceBoostActive: false,
+  balanceBoostWeapons: ["shotgun", "laser", "grenade", "homing", "burst", "boomerang"],
   upgradeChoices: [],
   prejoinUpgrades: [],
   transitioning: false,
@@ -54,8 +55,7 @@ Game.activateBalanceBoost = function () {
   Game.balanceBoostActive = true;
   Player.maxHealth++;
   Player.health++;
-  var allowedBoostWeapons = ["shotgun", "laser", "grenade"];
-  if (Player.hasGun && allowedBoostWeapons.indexOf(Player.weaponType) < 0) {
+  if (Player.hasGun && Game.balanceBoostWeapons.indexOf(Player.weaponType) < 0) {
     Player.hasGun = false;
     Player.weaponType = "sidearm";
     Player.gunLevel = 0;
@@ -63,7 +63,7 @@ Game.activateBalanceBoost = function () {
     Player.weaponTimer = 0;
   }
   Enemy.pickups = Enemy.pickups.filter(function (pickup) {
-    return !pickup.weaponType || allowedBoostWeapons.indexOf(pickup.weaponType) >= 0;
+    return !pickup.weaponType || Game.balanceBoostWeapons.indexOf(pickup.weaponType) >= 0;
   });
   var nearestEnemy = null;
   var nearestDistance = Infinity;

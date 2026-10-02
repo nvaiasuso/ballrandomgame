@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ROLLER</title>
-  <link rel="stylesheet" href="style.css?v=20261002">
+  <link rel="stylesheet" href="style.css?v=20261002-briefing">
 </head>
 <body>
   <h1>ROLLER</h1>
@@ -24,6 +24,7 @@
     <button id="gamble-button" type="button">GAMBLE [G]</button>
     <button id="pause-button" type="button">PAUSE [P]</button>
     <button id="fullscreen-button" type="button" aria-label="Enter fullscreen">FULLSCREEN</button>
+    <button id="self-test-button" type="button">SELF-TEST</button>
     <button id="mobile-toggle" type="button" aria-pressed="false">MOBILE MODE OFF</button>
   </div>
   <div id="tutorial-panel" hidden aria-live="polite">
@@ -112,14 +113,41 @@
       <button id="cancel-level" type="button">CANCEL</button>
     </div>
   </div>
+  <div id="start-briefing" hidden role="dialog" aria-modal="true" aria-labelledby="start-briefing-title">
+    <div class="start-briefing-box">
+      <p class="gamble-kicker">BEFORE YOU PLAY</p>
+      <h2 id="start-briefing-title">ROLLER is meant to be hard.</h2>
+      <p class="briefing-warning">Expect to get hit. Expect to die. That is part of this game: watch the enemies, learn their tells, and try again.</p>
+      <h3>The enemies adapt and gang up</h3>
+      <p>They can dodge your shots, spot or hear you, call nearby backup, flank while others suppress you, and change their aim based on how you move, jump, and dash. Some take cover, leap over hazards, flee when hurt, charge or slam, pick up weapons and shields, or recover health.</p>
+      <p class="briefing-roster"><strong>Enemy roster:</strong> Hunters, Brutes, Sprinters, Turrets, Hoppers, Rippers, Tanks, Snipers, Swarms, Wardens, Flyers, Chargers, Splitters, Blinkers, Burrowers, Trappers, Burst Gunners, Laser Wardens, Shield Guards, Medics, Bombers, and Gliders. Their attacks include aimed shots, shot patterns, homing or bouncing bullets, lasers, mines, explosions, teleports, burrowing, and splitting into extra enemies.</p>
+      <p><strong>Bosses escalate:</strong> they summon reinforcements, change phases, teleport, and use shockwaves, floor spikes, aimed bursts, lasers, and bullet-hell spreads. Ambushes, a pursuing lava wall, and occasional chaos events can make a run even rougher.</p>
+      <p><strong>Quick controls:</strong> LEFT/RIGHT or A/D move; SPACE/UP/W jumps; SHIFT dashes; aim with the mouse and click or press X to shoot. Defeat every enemy, then reach the flag.</p>
+      <p class="briefing-link"><strong>Want to try it?</strong> <a href="https://nvaiasuso.github.io/ballrandomgame/" target="_blank" rel="noopener noreferrer">nvaiasuso.github.io/ballrandomgame/</a></p>
+      <button id="start-briefing-continue" type="button">CONTINUE</button>
+    </div>
+  </div>
   <div id="tutorial-menu" hidden>
     <div class="tutorial-menu-box">
       <p class="gamble-kicker">ROLLER PRACTICE RANGE</p>
       <h2>Learn the course</h2>
       <p>Try movement, hazards, weapons, enemies, upgrades, and the finish objective in a checkpointed practice run.</p>
       <button id="tutorial-start" type="button">START PRACTICE</button>
+      <button id="tutorial-self-test" type="button">RUN SELF-TEST</button>
       <button id="tutorial-menu-skip" type="button">SKIP TO THE GAME</button>
       <p class="tutorial-menu-hint">Press ESC to skip.</p>
+    </div>
+  </div>
+  <div id="self-test-panel" hidden role="dialog" aria-modal="true" aria-labelledby="self-test-title">
+    <div class="self-test-box">
+      <p class="gamble-kicker">GAME DIAGNOSTICS</p>
+      <h2 id="self-test-title">Self-test report</h2>
+      <p id="self-test-status" aria-live="polite">Ready to test.</p>
+      <ol id="self-test-results"></ol>
+      <div class="self-test-actions">
+        <button id="self-test-rerun" type="button">RUN AGAIN</button>
+        <button id="self-test-close" type="button">CLOSE</button>
+      </div>
     </div>
   </div>
   </div>
@@ -128,11 +156,12 @@
   <script src="js/input.js?v=20261002"></script>
   <script src="js/level.js?v=20260929"></script>
   <script src="js/collide.js?v=20260929"></script>
-  <script src="js/enemy.js?v=20261002"></script>
+  <script src="js/enemy.js?v=20261002-guns"></script>
   <script src="js/player.js?v=20261002"></script>
-  <script src="js/draw.js?v=20261002"></script>
-  <script src="js/game.js?v=20261002"></script>
+  <script src="js/draw.js?v=20261002-nohalo"></script>
+  <script src="js/game.js?v=20261002-guns"></script>
   <script src="js/tutorial.js?v=20261002"></script>
-  <script src="js/main.js?v=20261002"></script>
+  <script src="js/self-test.js?v=20261002-guns"></script>
+  <script src="js/main.js?v=20261002-briefing"></script>
 </body>
 </html>

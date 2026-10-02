@@ -131,7 +131,7 @@ canvas {
 .tutorial-menu-box #tutorial-menu-skip { background: #fffdf8; }
 .tutorial-menu-hint { margin-bottom: 0; font-size: 11px; }
 
-#guide-button, #gamble-button, #pause-button, #fullscreen-button, #mobile-toggle,
+#guide-button, #gamble-button, #pause-button, #fullscreen-button, #self-test-button, #mobile-toggle,
 #gamble-panel button, #guide-panel button, #level-select-panel button {
   border: 2px solid #18212b;
   background: #ffcf56;
@@ -142,7 +142,7 @@ canvas {
   cursor: pointer;
 }
 
-#guide-button, #gamble-button, #pause-button, #fullscreen-button, #mobile-toggle { display: block; }
+#guide-button, #gamble-button, #pause-button, #fullscreen-button, #self-test-button, #mobile-toggle { display: block; }
 #gamble-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 #touch-controls {
@@ -249,6 +249,7 @@ body.mobile-mode canvas { touch-action: none; }
 #game-shell:fullscreen #shop-panel,
 #game-shell:fullscreen #guide-panel,
 #game-shell:fullscreen #level-select-panel,
+#game-shell:fullscreen #start-briefing,
 #game-shell:fullscreen #tutorial-menu {
   position: fixed;
   z-index: 20;
@@ -358,3 +359,93 @@ body.mobile-mode canvas { touch-action: none; }
   #mobile-toggle { min-height: 42px; }
   .controls { line-height: 1.7; }
 }
+
+#start-briefing {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(24, 33, 43, 0.88);
+}
+#start-briefing[hidden] { display: none !important; }
+.start-briefing-box {
+  width: min(760px, 100%);
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  text-align: left;
+}
+.start-briefing-box h2 { margin: 5px 0 12px; font-size: 30px; }
+.start-briefing-box h3 { margin: 18px 0 6px; font-size: 17px; }
+.start-briefing-box p { line-height: 1.5; margin: 8px 0; }
+.start-briefing-box .briefing-warning {
+  border-left: 5px solid #d94b32;
+  background: #ffcf56;
+  padding: 10px 12px;
+  font-weight: bold;
+}
+.start-briefing-box .briefing-roster { font-size: 13px; }
+.start-briefing-box .briefing-link { overflow-wrap: anywhere; }
+.start-briefing-box a { color: #126a70; font-weight: bold; }
+#start-briefing-continue {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 2px solid #18212b;
+  background: #ffcf56;
+  color: #18212b;
+  font: bold 14px monospace;
+  cursor: pointer;
+}
+
+@media (max-width: 680px) {
+  .start-briefing-box { padding: 18px; }
+  .start-briefing-box h2 { font-size: 23px; }
+  .start-briefing-box .briefing-roster { font-size: 12px; }
+}
+
+#self-test-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(24, 33, 43, 0.82);
+}
+#self-test-panel[hidden] { display: none !important; }
+.self-test-box {
+  width: min(620px, 100%);
+  max-height: min(84vh, 680px);
+  overflow: auto;
+  padding: 22px 24px;
+  box-sizing: border-box;
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  text-align: left;
+}
+.self-test-box h2 { margin: 6px 0 10px; }
+.self-test-box ol { padding-left: 24px; line-height: 1.5; }
+.self-test-box li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.self-test-pass { color: #187744; }
+.self-test-fail { color: #b3261e; font-weight: bold; }
+.self-test-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.self-test-actions button {
+  border: 2px solid #18212b;
+  background: #ffcf56;
+  color: #18212b;
+  font: bold 12px monospace;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.self-test-actions #self-test-close { background: #fffdf8; }

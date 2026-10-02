@@ -431,7 +431,7 @@ Enemy.kill = function (index, stomped) {
   e.dead = true;
   var upgradeTypes = ["b", "m", "w", "q", "f"];
   var level = upgradeTypes.indexOf(e.type) >= 0 ? 2 : 1;
-  var dropWeapons = Game.balanceBoostActive ? ["shotgun", "laser", "grenade"] : ["shotgun", "laser", "grenade", "homing", "burst", "boomerang"];
+  var dropWeapons = Game.balanceBoostWeapons;
   var weaponType = dropWeapons[Math.floor(Math.random() * dropWeapons.length)];
   if (e.type === "v" || e.type === "r") { level = 2; }
   if (e.splitter) { level = 2; }
