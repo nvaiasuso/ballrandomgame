@@ -30,6 +30,10 @@ Player.reset = function () {
     if (Player.perks[perkIndex] === "pierce") { Player.piercing = true; }
   }
   Player.health = CONFIG.PLAYER_HEALTH; Player.maxHealth = CONFIG.PLAYER_HEALTH; Player.hitTimer = 0;
+  if (Game.balanceBoostActive) {
+    Player.health++;
+    Player.maxHealth++;
+  }
   Player.secretHealthTimer = 60 + Math.floor(Math.random() * 120);
   Player.dashTimer = 0; Player.dashCooldown = 0; Player.dashDirection = 1; Player.dashing = false;
   Player.scaleX = 1; Player.scaleY = 1; Player.muzzleFlash = 0;
@@ -91,7 +95,7 @@ Player.update = function () {
   if (Input.dash && Player.dashCooldown === 0) {
     Player.dashDirection = Input.left ? -1 : (Input.right ? 1 : (Math.cos(Player.aimAngle) < 0 ? -1 : 1));
     Player.dashTimer = CONFIG.DASH_FRAMES;
-    Player.dashCooldown = CONFIG.DASH_COOLDOWN;
+    Player.dashCooldown = Math.ceil(CONFIG.DASH_COOLDOWN * (Game.balanceBoostActive ? 0.92 : 1));
     Game.habits.dashes++;
     Input.dash = false;
     AudioFX.dash();

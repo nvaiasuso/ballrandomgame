@@ -14,6 +14,9 @@ Input.restoreMobileMode();
 
 document.getElementById("guide-button").addEventListener("click", function () { Game.openGuide(); });
 document.getElementById("guide-close").addEventListener("click", function () { Game.closeGuide(); });
+document.getElementById("tutorial-start").addEventListener("click", function () { Tutorial.start(); });
+document.getElementById("tutorial-skip-button").addEventListener("click", function () { Tutorial.skip(); });
+document.getElementById("tutorial-menu-skip").addEventListener("click", function () { Tutorial.skip(); });
 document.getElementById("gamble-button").addEventListener("click", function () { Game.openGamble(); });
 document.getElementById("pause-button").addEventListener("click", function () { Game.togglePause(); });
 document.getElementById("fullscreen-button").addEventListener("click", function () {
@@ -29,6 +32,7 @@ document.addEventListener("fullscreenchange", function () {
   var active = document.fullscreenElement;
   button.textContent = active ? "EXIT FULLSCREEN" : "FULLSCREEN";
   button.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
+  Tutorial.noteFullscreen(!!active);
 });
 document.getElementById("gamble-confirm").addEventListener("click", function (event) { event.stopPropagation(); Game.resolveGamble(); });
 document.getElementById("gamble-cancel").addEventListener("click", function (event) { event.stopPropagation(); Game.closeGamble(); });
@@ -45,5 +49,6 @@ document.getElementById("cancel-level").addEventListener("click", function () { 
 Level.loadData(function () {
   Game.easyMode = false;
   Game.startLevel(CONFIG.START_LEVEL);
+  Tutorial.initialize();
   Game.loop();
 });

@@ -14,6 +14,8 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - G or the GAMBLE button - pause and risk a random buff or debuff once per level
 - GUIDE - open the field guide
 - Press SHIFT+Q twice to choose a level; press it once to skip ahead
+- Press SHIFT+1 twice quickly for +1 health and a shorter dash cooldown; boost mode also restricts guns, adds a chance to dodge bullets, and improves buff drops
+- On first launch, start the guided practice or press ESC to skip it
 - Spend carried shards on speed, jump, or health upgrades before entering a selected level
 - Secret buff - enter UP, UP, DOWN, DOWN, LEFT, LEFT, RIGHT, RIGHT with the arrow keys
 

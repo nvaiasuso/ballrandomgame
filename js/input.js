@@ -25,6 +25,10 @@ var Input = {
   pause: false,
   invincibility: false,
   secretInvincibility: false,
+  tutorialSkip: false,
+  balanceBoostActivation: false,
+  balanceBoostPending: false,
+  balanceBoostAt: 0,
   secretComboProgress: 0,
   secretBuffActivation: false,
   secretCombo: ["up", "up", "down", "down", "left", "left", "right", "right"],
@@ -119,6 +123,11 @@ Input.setupMobileControls = function () {
 
 window.addEventListener("keydown", function (event) {
   AudioFX.unlock();
+  if (event.key === "Escape" && typeof Tutorial !== "undefined" && (Tutorial.active || Tutorial.menuVisible)) {
+    Input.tutorialSkip = true;
+    event.preventDefault();
+    return;
+  }
   if (!event.repeat && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(event.key) >= 0) {
     Input.registerSecretDirection(event.key.slice(5).toLowerCase());
   }
@@ -130,6 +139,18 @@ window.addEventListener("keydown", function (event) {
     } else {
       Input.adminSkipPending = true;
       Input.adminSkipAt = skipTime;
+    }
+    event.preventDefault();
+    return;
+  }
+  if (!event.repeat && event.shiftKey && event.code === "Digit1") {
+    var boostTime = Date.now();
+    if (Input.balanceBoostPending && boostTime - Input.balanceBoostAt <= 400) {
+      Input.balanceBoostPending = false;
+      Input.balanceBoostActivation = true;
+    } else {
+      Input.balanceBoostPending = true;
+      Input.balanceBoostAt = boostTime;
     }
     event.preventDefault();
     return;

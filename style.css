@@ -76,6 +76,61 @@ canvas {
 
 #tutorial-message:empty { display: none; }
 
+#tutorial-panel {
+  width: min(800px, 100%);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin: 0 auto 8px;
+  padding: 9px 12px;
+  border: 2px solid #18212b;
+  background: #fffdf8;
+  color: #18212b;
+  text-align: left;
+}
+
+#tutorial-panel[hidden] { display: none !important; }
+#tutorial-step-number { color: #d94b32; font-size: 11px; }
+#tutorial-task { margin: 3px 0 0; font-size: 14px; font-weight: bold; }
+#tutorial-hint { margin: 3px 0 0; font-size: 11px; }
+#tutorial-panel button, #tutorial-menu button {
+  border: 2px solid #18212b;
+  background: #ffcf56;
+  color: #18212b;
+  font: bold 12px monospace;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+#tutorial-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(24, 33, 43, 0.82);
+}
+
+#tutorial-menu[hidden] { display: none !important; }
+.tutorial-menu-box {
+  width: min(440px, 100%);
+  padding: 24px;
+  box-sizing: border-box;
+  border: 3px solid #5ce1e6;
+  background: #fffdf8;
+  color: #18212b;
+  text-align: left;
+}
+.tutorial-menu-box h2 { margin: 6px 0 10px; font-size: 26px; }
+.tutorial-menu-box p { line-height: 1.45; }
+.tutorial-menu-box button { display: block; width: 100%; margin-top: 8px; }
+.tutorial-menu-box #tutorial-menu-skip { background: #fffdf8; }
+.tutorial-menu-hint { margin-bottom: 0; font-size: 11px; }
+
 #guide-button, #gamble-button, #pause-button, #fullscreen-button, #mobile-toggle,
 #gamble-panel button, #guide-panel button, #level-select-panel button {
   border: 2px solid #18212b;
@@ -193,7 +248,8 @@ body.mobile-mode canvas { touch-action: none; }
 #game-shell:fullscreen #gamble-panel,
 #game-shell:fullscreen #shop-panel,
 #game-shell:fullscreen #guide-panel,
-#game-shell:fullscreen #level-select-panel {
+#game-shell:fullscreen #level-select-panel,
+#game-shell:fullscreen #tutorial-menu {
   position: fixed;
   z-index: 20;
 }
@@ -295,6 +351,8 @@ body.mobile-mode canvas { touch-action: none; }
   canvas { width: 100%; height: auto; }
   .game-actions { flex-wrap: wrap; }
   #touch-controls { justify-content: center; flex-wrap: wrap; }
+  #tutorial-panel { align-items: flex-start; padding: 8px; }
+  #tutorial-task { font-size: 12px; }
   .touch-movement, .touch-actions { flex: 1 1 100%; justify-content: center; }
   #touch-controls button { flex: 1 1 0; max-width: 120px; min-height: 68px; }
   #mobile-toggle { min-height: 42px; }

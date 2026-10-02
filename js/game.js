@@ -31,6 +31,7 @@ var Game = {
   frame: 0,
   keepPerks: false,
   pendingLevel: 0,
+  balanceBoostActive: false,
   upgradeChoices: [],
   prejoinUpgrades: [],
   transitioning: false,
@@ -42,6 +43,39 @@ var Game = {
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };
 Game.secretBuffCinematic = null;
+
+Game.enemySpeedFactor = function () {
+  return Game.enemySpeedScale;
+};
+
+Game.activateBalanceBoost = function () {
+  Input.balanceBoostActivation = false;
+  if (Game.balanceBoostActive || Game.mode !== "playing" || (typeof Tutorial !== "undefined" && Tutorial.active)) { return; }
+  Game.balanceBoostActive = true;
+  Player.maxHealth++;
+  Player.health++;
+  var allowedBoostWeapons = ["shotgun", "laser", "grenade"];
+  if (Player.hasGun && allowedBoostWeapons.indexOf(Player.weaponType) < 0) {
+    Player.hasGun = false;
+    Player.weaponType = "sidearm";
+    Player.gunLevel = 0;
+    Player.ammo = 0;
+    Player.weaponTimer = 0;
+  }
+  Enemy.pickups = Enemy.pickups.filter(function (pickup) {
+    return !pickup.weaponType || allowedBoostWeapons.indexOf(pickup.weaponType) >= 0;
+  });
+  var nearestEnemy = null;
+  var nearestDistance = Infinity;
+  for (var enemyIndex = 0; enemyIndex < Enemy.list.length; enemyIndex++) {
+    var enemy = Enemy.list[enemyIndex];
+    var distance = Math.hypot(enemy.x + CONFIG.ENEMY_SIZE / 2 - Player.x - CONFIG.PLAYER_SIZE / 2,
+      enemy.y + CONFIG.ENEMY_SIZE / 2 - Player.y - CONFIG.PLAYER_SIZE / 2);
+    if (distance < nearestDistance) { nearestEnemy = enemy; nearestDistance = distance; }
+  }
+  if (nearestEnemy) { nearestEnemy.balanceMarked = true; }
+  Game.showMessage("FIELD EDGE ACTIVE: +1 health, faster dash recovery, and a better chance at buffs.");
+};
 
 Game.activateSecretBuff = function () {
   if (Player.secretBuff) { Input.secretBuffActivation = false; return; }
@@ -65,7 +99,7 @@ Game.startLevel = function (levelNumber, preserveCheckpoint) {
   if (!preserveCheckpoint || Game.checkpoint.level !== levelNumber) {
     Game.checkpoint = { level: levelNumber, x: 0, y: 0, nextX: 640 };
   }
-  Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL && !Game.easyMode, step: 0, wrongTimer: 0 };
+  Game.tutorial = { active: levelNumber === CONFIG.START_LEVEL && !Game.easyMode && !(typeof Tutorial !== "undefined" && Tutorial.hasCompleted()), step: 0, wrongTimer: 0 };
   Game.randomMode = false;
   Game.endless = false;
   Game.gambleUsed = false;
@@ -290,9 +324,11 @@ Game.updateCheckpoint = function () {
 Game.togglePause = function () {
   if (Game.mode === "playing") {
     Game.mode = "paused";
+    if (typeof Tutorial !== "undefined") { Tutorial.notePause(true); }
     Game.showMessage("PAUSED - press P or Resume to continue.");
   } else if (Game.mode === "paused") {
     Game.mode = "playing";
+    if (typeof Tutorial !== "undefined") { Tutorial.notePause(false); }
     Game.showMessage("Back in action.");
   }
 };
@@ -404,7 +440,15 @@ Game.resolveGamble = function () {
     { name: "JAMMED TRIGGER", text: "Debuff: your weapon fires slower.", apply: function () { Player.shootCooldown += 15; } },
     { name: "FRAIL FORTUNE", text: "Debuff: your shield is stripped away.", apply: function () { Player.invincible = false; Player.invincibleTimer = 0; } }
   ];
-  var effect = effects[Math.floor(Math.random() * effects.length)];
+  var effect;
+  if (Game.balanceBoostActive) {
+    var goodEffects = effects.slice(0, 10);
+    var badEffects = effects.slice(10);
+    var boostedPool = Math.random() < 0.7 ? goodEffects : badEffects;
+    effect = boostedPool[Math.floor(Math.random() * boostedPool.length)];
+  } else {
+    effect = effects[Math.floor(Math.random() * effects.length)];
+  }
   effect.apply();
   Player.gambleEffect = effect.name;
   Game.gambleUsed = true;
@@ -417,6 +461,7 @@ Game.resolveGamble = function () {
 
 Game.die = function (reason) {
   if (Player.invincible) { return; }
+  if (typeof Tutorial !== "undefined" && Tutorial.active) { Tutorial.respawn(); return; }
   Game.mode = "dead";
   Player.startDeathAnimation();
   AudioFX.hit();
@@ -428,6 +473,25 @@ Game.die = function (reason) {
 Game.update = function () {  
     Game.frame++;
 
+  if (typeof Tutorial !== "undefined" && Tutorial.menuVisible) {
+    if (Input.tutorialSkip) { Input.tutorialSkip = false; Tutorial.skip(); }
+    return;
+  }
+  if (typeof Tutorial !== "undefined" && Tutorial.active) {
+    if (Input.tutorialSkip) { Input.tutorialSkip = false; Tutorial.skip(); return; }
+    if (Input.restart) { Tutorial.restartCurrentStep(); return; }
+    if (Input.pause) {
+      Input.pause = false;
+      Game.togglePause();
+      Tutorial.update();
+      return;
+    }
+    Input.secretInvincibility = false;
+    Input.secretBuffActivation = false;
+    if (Game.mode !== "playing") { Tutorial.update(); return; }
+  }
+
+  if (Input.balanceBoostActivation && Game.mode === "playing") { Game.activateBalanceBoost(); }
   if (Input.secretBuffActivation && Game.mode === "playing") { Game.activateSecretBuff(); }
   if (Game.secretBuffCinematic) {
     Game.secretBuffCinematic.frame++;
@@ -533,9 +597,9 @@ Game.update = function () {
   // If we are not playing, nothing moves. We just wait for R.  
   if (Game.mode !== "playing") { return; }  
 
-  if (!Enemy.boss) { Game.levelTime--; }
+  if (!Tutorial.active && !Enemy.boss) { Game.levelTime--; }
   Level.updateDynamic();
-  if (Game.levelTime <= 0) {
+  if (!Tutorial.active && Game.levelTime <= 0) {
     if (!Player.invincible) {
       Game.die("You ran out of time.");
       return;
@@ -544,7 +608,10 @@ Game.update = function () {
   }
   if (Game.comboTimer > 0) { Game.comboTimer--; }
   if (Game.comboTimer === 0) { Game.combo = 0; }
-  if (Game.chaosRemaining > 0) {
+  if (Tutorial.active) {
+    Game.chaosRemaining = 0;
+    Game.chaosType = "";
+  } else if (Game.chaosRemaining > 0) {
     Game.chaosRemaining--;
     if (Game.chaosRemaining === 0) {
       Game.gravityScale = 1; Game.enemySpeedScale = 1; Game.chaosType = "";
@@ -557,6 +624,10 @@ Game.update = function () {
   
   Player.update();  
   Enemy.update();  
+  if (Tutorial.active) {
+    Tutorial.update();
+    if (!Tutorial.active) { return; }
+  }
   Game.updateCheckpoint();
   Game.updateTutorialState();
   

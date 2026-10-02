@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ROLLER</title>
-  <link rel="stylesheet" href="style.css?v=20260930">
+  <link rel="stylesheet" href="style.css?v=20261002">
 </head>
 <body>
   <h1>ROLLER</h1>
@@ -25,6 +25,14 @@
     <button id="pause-button" type="button">PAUSE [P]</button>
     <button id="fullscreen-button" type="button" aria-label="Enter fullscreen">FULLSCREEN</button>
     <button id="mobile-toggle" type="button" aria-pressed="false">MOBILE MODE OFF</button>
+  </div>
+  <div id="tutorial-panel" hidden aria-live="polite">
+    <div>
+      <strong id="tutorial-step-number"></strong>
+      <p id="tutorial-task"></p>
+      <p id="tutorial-hint" hidden></p>
+    </div>
+    <button id="tutorial-skip-button" type="button" aria-label="Skip tutorial">SKIP</button>
   </div>
   <canvas id="game" width="800" height="400"></canvas>
   <div id="touch-controls" hidden aria-label="Touch game controls">
@@ -104,16 +112,27 @@
       <button id="cancel-level" type="button">CANCEL</button>
     </div>
   </div>
+  <div id="tutorial-menu" hidden>
+    <div class="tutorial-menu-box">
+      <p class="gamble-kicker">ROLLER PRACTICE RANGE</p>
+      <h2>Learn the course</h2>
+      <p>Try movement, hazards, weapons, enemies, upgrades, and the finish objective in a checkpointed practice run.</p>
+      <button id="tutorial-start" type="button">START PRACTICE</button>
+      <button id="tutorial-menu-skip" type="button">SKIP TO THE GAME</button>
+      <p class="tutorial-menu-hint">Press ESC to skip.</p>
+    </div>
+  </div>
   </div>
   <script src="js/config.js?v=20260929"></script>
   <script src="js/audio.js?v=20260929"></script>
-  <script src="js/input.js?v=20260930"></script>
+  <script src="js/input.js?v=20261002"></script>
   <script src="js/level.js?v=20260929"></script>
   <script src="js/collide.js?v=20260929"></script>
-  <script src="js/enemy.js?v=20260930"></script>
-  <script src="js/player.js?v=20260930"></script>
-  <script src="js/draw.js?v=20260930"></script>
-  <script src="js/game.js?v=20260930"></script>
-  <script src="js/main.js?v=20260930"></script>
+  <script src="js/enemy.js?v=20261002"></script>
+  <script src="js/player.js?v=20261002"></script>
+  <script src="js/draw.js?v=20261002"></script>
+  <script src="js/game.js?v=20261002"></script>
+  <script src="js/tutorial.js?v=20261002"></script>
+  <script src="js/main.js?v=20261002"></script>
 </body>
 </html>
