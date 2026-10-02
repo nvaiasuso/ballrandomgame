@@ -30,7 +30,7 @@ Level.loadData = function (whenDone) {
       return response.json();
     });
   }
-  Promise.all([loadJson("data/pieces.json"), loadJson("data/levels.json")]).then(function (files) {
+  Promise.all([loadJson("data/pieces.json"), loadJson("data/levels.json?v=20261002-parkour")]).then(function (files) {
     Level.pieces = files[0];
     Level.levels = files[1].levels;
     whenDone();

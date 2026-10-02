@@ -25,6 +25,8 @@ var Game = {
   endless: false,
   endlessWave: 0,
   endlessSeed: 0,
+  screenSplats: [],
+  splatShotCount: 0,
   score: 0,
   highScore: 0,
   introTimer: 0,
@@ -33,6 +35,7 @@ var Game = {
   pendingLevel: 0,
   balanceBoostActive: false,
   balanceBoostWeapons: ["shotgun", "laser", "grenade", "homing", "burst", "boomerang", "piercer", "ricochet"],
+    balanceBoostWeapons: ["shotgun", "scattergun", "laser", "grenade", "homing", "burst", "minigun", "boomerang", "piercer", "ricochet"],
   upgradeChoices: [],
   prejoinUpgrades: [],
   transitioning: false,
@@ -44,9 +47,186 @@ var Game = {
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };
 Game.secretBuffCinematic = null;
+Game.clearScreenSplats = function () {
+  Game.screenSplats = [];
+  Game.splatShotCount = 0;
+};
+
+Game.recordPlayerShot = function () {
+  Game.splatShotCount++;
+  if (Game.splatShotCount % 4 !== 0) { return; }
+  if (Game.screenSplats.length >= 14) { Game.screenSplats.shift(); }
+  Game.screenSplats.push({
+    x: 28 + Math.random() * (CONFIG.CANVAS_W - 56),
+    y: 28 + Math.random() * (CONFIG.CANVAS_H - 56),
+    radius: 8 + Math.random() * 11,
+    rotation: Math.random() * Math.PI * 2,
+    drops: 3 + Math.floor(Math.random() * 4)
+  });
+};
+
 Game.deathTaunts = [
   "Your aim is like my grandma's - she doesn't even play.",
   "Bro is fighting the air.",
+  "Bro is shooting everything except the enemy.",
+
+"Your aim has left the server.",
+
+"Did your crosshair disconnect?",
+
+"Bro is aiming at things that aren't even there.",
+
+"Your bullets are sightseeing.",
+
+"That wasn't a miss, that was a completely different target.",
+
+"Bro's aim is running on Internet Explorer.",
+
+"Your crosshair has trust issues.",
+
+"Are you playing with your eyes closed?",
+
+"Bro is allergic to hitting shots.",
+
+"Your bullets have a mind of their own.",
+
+"Even the enemy is confused by that shot.",
+
+"Bro is fighting invisible enemies.",
+
+"Your aim is on vacation.",
+
+"That shot had absolutely no business going there.",
+
+"Bro's bullets are taking scenic routes.",
+
+"Your accuracy is having technical difficulties.",
+
+"Did you aim or just click randomly?",
+
+"Bro is creating new bullet trajectories.",
+
+"Your crosshair is just guessing at this point.",
+
+"That enemy was standing still and you still lost.",
+
+"Bro couldn't hit a barn door from inside the barn.",
+
+"Your bullets are actively avoiding the target.",
+
+"Bro is shooting tomorrow's enemies.",
+
+"That shot went somewhere. Just not here.",
+
+"Your aim has more plot twists than the game.",
+
+"Bro's accuracy is purely theoretical.",
+
+"Even the warning shots are missing.",
+
+"Your bullets are trying to escape the game.",
+
+"Bro is aiming with Wi-Fi.",
+
+"Your aim is powered by a potato.",
+
+"Did your mouse just give up?",
+
+"Bro's crosshair has no idea what's happening.",
+
+"Your shots are allergic to enemies.",
+
+"That was almost impressive. Almost.",
+
+"Bro is making the enemy feel invincible.",
+
+"Your aim just committed a crime against accuracy.",
+
+"Even the floor is getting more hits than you.",
+
+"Bro is shooting at the concept of an enemy.",
+
+"Your bullets are going wherever they feel like.",
+
+"Bro has unlocked random targeting.",
+
+"Your accuracy needs an update.",
+
+"That shot missed so badly it became a warning.",
+
+"Bro is playing hide and seek with the crosshair.",
+
+"Your aim is a work of modern art.",
+
+"Even the wall has better aim.",
+
+"Bro's bullets have personal goals.",
+
+"Your crosshair is decorative at this point.",
+
+"That wasn't aiming. That was manifesting.",
+
+"Bro is letting the bullets decide.",
+
+"Your accuracy just rage quit.",
+
+"How did you miss from that close?",
+
+"Bro is fighting the entire environment.",
+
+"Your aim needs adult supervision.",
+
+"That shot was sent to the wrong address.",
+
+"Bro is using a weapon as a suggestion.",
+
+"Your bullets are more scared of the enemy than you are.",
+
+"At this point, just throw the gun.",
+
+"Bro's aim has entered spectator mode.",
+
+"Your shots have absolutely no GPS.",
+
+"That enemy was practically asking to be hit.",
+
+"Bro is making every bullet count... as a miss.",
+
+"Your aim is doing its own side quest.",
+
+"Bro's accuracy is built different. And not in a good way.",
+
+"Your crosshair is fighting for its life.",
+
+"Bro just invented negative accuracy.",
+
+"Even luck can't save that aim.",
+
+"Your aim is sponsored by confusion.",
+
+"Bro is shooting based on vibes.",
+
+"That bullet had somewhere important to be.",
+
+"Your aim is less accurate than a coin flip.",
+
+"Bro is giving the enemy free exercise.",
+
+"Your bullets are playing dodgeball with the target.",
+
+"Bro just missed an enemy the size of a truck.",
+
+"Your aim needs a map and a compass.",
+
+"That shot was so far off it needs its own minimap.",
+
+"Bro's accuracy is currently unavailable.",
+
+"Your bullets are exploring the entire map.",
+
+"Bro is turning ammunition into decoration.",
+
+"Your aim has officially become a guessing game.",
   "Did you just miss a stationary target?",
   "Your bullets have better dodging skills than the enemies.",
   "I've seen potatoes aim better.",
@@ -372,6 +552,7 @@ Game.resetIntensity = function () {
   Game.combo = 0; Game.comboTimer = 0; Game.chaosTimer = CONFIG.CHAOS_INTERVAL;
   Game.chaosRemaining = 0; Game.chaosType = ""; Game.gravityScale = 1;
   Game.enemySpeedScale = 1; Game.hitTint = 0; Game.bossFlicker = 0;
+  Game.clearScreenSplats();
 };
 
 Game.impact = function (hitstop, slowMo) {
@@ -507,6 +688,17 @@ Game.die = function (reason) {
 // --- ONE FRAME --------------------------------------------------------  
 Game.update = function () {  
     Game.frame++;
+
+  if (Input.secretImageToggle) {
+    Input.secretImageToggle = false;
+    Draw.showSecretImage = !Draw.showSecretImage;
+    Game.showMessage(Draw.showSecretImage ? "CUSTOM SECRET IMAGE ON." : "SECRET RING SHOWS E.");
+  }
+  if (Input.wipeScreenSplats) {
+    Input.wipeScreenSplats = false;
+    Game.clearScreenSplats();
+    Game.showMessage("SCREEN WIPED.");
+  }
 
   if (typeof Tutorial !== "undefined" && Tutorial.menuVisible) {
     if (Input.tutorialSkip) { Input.tutorialSkip = false; Tutorial.skip(); }

@@ -172,6 +172,18 @@
     {
       "name": "Foundry Gauntlet",
       "pieces": ["start", "crumble_run", "charger_run", "spikepit", "finish"]
+    },
+    {
+      "name": "Parkour 4 - Crumble Crossing",
+      "pieces": ["start", "crumble_run", "moving_platform", "gap", "stairs", "finish"]
+    },
+    {
+      "name": "Parkour 5 - Spike Skyline",
+      "pieces": ["start", "stairs", "spikepit", "platform", "hard_gap3", "finish"]
+    },
+    {
+      "name": "Parkour 6 - Switchback Precision",
+      "pieces": ["start", "gap", "platform", "crumble_run", "moving_platform", "spikes", "finish"]
     }
   ]
 }

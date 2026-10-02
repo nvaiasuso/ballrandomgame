@@ -2,7 +2,7 @@
    draw.js  --  EVERYTHING YOU CAN SEE.
    ===================================================================== */
 
-var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true, secretImage: null, secretImageReady: false, secretImageUrl: null };
+var Draw = { canvas: null, ctx: null, cameraX: 0, zoom: 1, cameraLookAhead: 0, cameraSnap: true, secretImage: null, secretImageReady: false, secretImageUrl: null, showSecretImage: false };
 Draw.setup = function () {
   Draw.canvas = document.getElementById("game");
   Draw.ctx = Draw.canvas.getContext("2d");
@@ -98,6 +98,7 @@ Draw.everything = function () {
     ctx.font = "12px monospace"; ctx.fillStyle = "#fffdf8"; ctx.fillText(Game.endless ? "ENDLESS WAVE" : "READY", introX, CONFIG.CANVAS_H / 2 + 28);
     ctx.textAlign = "left";
   }
+  Draw.screenSplats();
   Draw.hud();
   if (Game.secretBuffCinematic) { Draw.secretCinematic(); }
 };
@@ -117,10 +118,12 @@ Draw.hud = function () {
   if (weaponHud) {
     var weaponText = "WEAPON: NONE";
     if (Player.weaponType === "shotgun") { weaponText = "WEAPON: SHOTGUN " + Player.ammo; }
+    else if (Player.weaponType === "scattergun") { weaponText = "WEAPON: SCATTERGUN " + Player.ammo; }
     else if (Player.weaponType === "laser") { weaponText = "WEAPON: LASER " + Player.ammo; }
     else if (Player.weaponType === "grenade") { weaponText = "WEAPON: GRENADE " + Player.ammo; }
     else if (Player.weaponType === "homing") { weaponText = "WEAPON: HOMING " + Player.ammo; }
     else if (Player.weaponType === "burst") { weaponText = "WEAPON: BURST " + Player.ammo; }
+    else if (Player.weaponType === "minigun") { weaponText = "WEAPON: MINIGUN " + Player.ammo; }
     else if (Player.weaponType === "boomerang") { weaponText = "WEAPON: BOOMERANG " + Player.ammo; }
     else if (Player.weaponType === "piercer") { weaponText = "WEAPON: PIERCER " + Player.ammo; }
     else if (Player.weaponType === "ricochet") { weaponText = "WEAPON: RICOCHET " + Player.ammo; }
@@ -231,12 +234,15 @@ Draw.player = function () {
     ctx.beginPath(); ctx.arc(centerX, centerY, r + 10, 0, Math.PI * 2); ctx.stroke();
   }
   if (Player.secretBuff) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
     for (var orbit = 0; orbit < 4; orbit++) {
       var orbitAngle = Game.frame * 0.06 + orbit * Math.PI / 2;
       var orbitX = Math.cos(orbitAngle) * 38;
       var orbitY = Math.sin(orbitAngle) * 28;
       Draw.drawSecretSprite(orbitX, orbitY, 24);
     }
+    ctx.restore();
   }
   if (Game.secretBuffCinematic && Game.secretBuffCinematic.frame < 40) {
     var bobX = Math.sin(Game.secretBuffCinematic.frame * 0.32) * 26;
@@ -254,7 +260,7 @@ Draw.drawSecretImage = function (x, y, maxSize) {
 
 Draw.drawSecretSprite = function (centerX, centerY, size) {
   var ctx = Draw.ctx;
-  if (Draw.secretImageReady) {
+  if (Draw.showSecretImage && Draw.secretImageReady) {
     Draw.drawSecretImage(centerX - size / 2, centerY - size / 2, size);
     return;
   }
@@ -273,11 +279,45 @@ Draw.drawSecretSprite = function (centerX, centerY, size) {
   ctx.strokeStyle = "#20cbd8";
   ctx.lineWidth = Math.max(2, size * 0.1);
   ctx.stroke();
+  ctx.shadowBlur = 0;
   ctx.fillStyle = "#14232b";
-  ctx.beginPath();
-  ctx.arc(size * 0.12, -size * 0.04, size * 0.1, 0, Math.PI * 2);
-  ctx.arc(size * 0.28, -size * 0.04, size * 0.1, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.font = "bold " + Math.round(size * 0.82) + "px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("E", 0, 1);
+  ctx.restore();
+};
+
+Draw.screenSplats = function () {
+  if (!Game.screenSplats || Game.screenSplats.length === 0) { return; }
+  var ctx = Draw.ctx;
+  ctx.save();
+  for (var i = 0; i < Game.screenSplats.length; i++) {
+    var splat = Game.screenSplats[i];
+    ctx.save();
+    ctx.translate(splat.x, splat.y);
+    ctx.rotate(splat.rotation);
+    ctx.fillStyle = "#fffdfa";
+    ctx.strokeStyle = "rgba(24, 33, 43, 0.72)";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(24, 33, 43, 0.42)";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, splat.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    for (var drop = 0; drop < splat.drops; drop++) {
+      var angle = Math.PI * 2 * drop / splat.drops;
+      var distance = splat.radius * (1.2 + (drop % 2) * 0.35);
+      var dropRadius = splat.radius * (0.18 + (drop % 3) * 0.045);
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, dropRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   ctx.restore();
 };
 
@@ -332,12 +372,14 @@ Draw.secretCinematic = function () {
   ctx.fillRect(0, 0, CONFIG.CANVAS_W, 24);
   ctx.fillRect(0, CONFIG.CANVAS_H - 24, CONFIG.CANVAS_W, 24);
   if (scene.frame < 40) { return; }
-  var corners = [[40, 40], [CONFIG.CANVAS_W - 40, 40], [40, CONFIG.CANVAS_H - 40], [CONFIG.CANVAS_W - 40, CONFIG.CANVAS_H - 40]];
+  var orbitRadius = 72;
   ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.fillStyle = "#ffffff"; ctx.lineWidth = 2;
-  for (var corner = 0; corner < corners.length; corner++) {
-    var point = corners[corner];
-    ctx.beginPath(); ctx.moveTo(point[0], point[1]); ctx.lineTo(centerX, centerY); ctx.stroke();
-    Draw.drawSecretSprite(point[0], point[1], 64);
+  for (var orbit = 0; orbit < 4; orbit++) {
+    var orbitAngle = Game.frame * 0.025 + orbit * Math.PI / 2;
+    var orbitX = centerX + Math.cos(orbitAngle) * orbitRadius;
+    var orbitY = centerY + Math.sin(orbitAngle) * orbitRadius;
+    ctx.beginPath(); ctx.moveTo(orbitX, orbitY); ctx.lineTo(centerX, centerY); ctx.stroke();
+    Draw.drawSecretSprite(orbitX, orbitY, 56);
   }
   for (var ring = 0; ring < 6; ring++) {
     var radius = (scene.frame * 5 + ring * 24) % 150;

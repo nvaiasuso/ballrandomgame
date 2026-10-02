@@ -150,7 +150,7 @@ Player.update = function () {
     Player.secretSprayTimer = 5;
     Enemy.secretSpray();
   } else if (Player.hasGun && Player.ammo > 0 && (Input.shoot || Input.mouseDown) && Player.shootCooldown === 0) {
-    Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Game.habits.shots++; Player.shootCooldown = Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "burst" ? 30 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "grenade" ? 28 : (Player.weaponType === "piercer" ? 24 : (Player.weaponType === "ricochet" ? 18 : CONFIG.PLAYER_SHOOT_COOLDOWN)))));
+    Enemy.firePlayerBullet(); AudioFX.shoot(); Enemy.cinematic.shake = Math.max(Enemy.cinematic.shake, 3); Player.muzzleFlash = 5; Player.ammo--; Game.habits.shots++; Game.recordPlayerShot(); Player.shootCooldown = Player.weaponType === "scattergun" ? 40 : (Player.weaponType === "shotgun" ? 22 : (Player.weaponType === "burst" ? 30 : (Player.weaponType === "laser" ? 5 : (Player.weaponType === "minigun" ? 5 : (Player.weaponType === "grenade" ? 28 : (Player.weaponType === "piercer" ? 24 : (Player.weaponType === "ricochet" ? 18 : CONFIG.PLAYER_SHOOT_COOLDOWN)))))));
     if (Player.ammo === 0) { Player.hasGun = false; Player.gunLevel = 0; Game.showMessage("CLICK. Empty weapon."); }
   } else if (Game.tutorial.active && Game.tutorial.step === 1 && (Input.shoot || Input.mouseDown)) {
     Game.tutorialMistake("shooting needs a collected gun; jump on the enemy first.");

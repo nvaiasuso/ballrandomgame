@@ -11,19 +11,21 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - Jump onto an enemy to defeat it and make it drop a gun
 - X or K - fire after collecting a gun
 - SHIFT+E - start Endless mode
+- SHIFT+O - toggle the secret-ring photo; the ring shows E tokens by default
+- Y - wipe the white shot splats from the screen
 - R - restart the level
 - G or the GAMBLE button - risk a random buff or debuff once per level
 - GUIDE - open the field guide
 - Press SHIFT+Q twice to choose a level; press it once to skip ahead
-- Press SHIFT+1 twice quickly for +1 health and a shorter dash cooldown; boost mode allows shotguns, lasers, grenades, homing guns, burst rifles, and boomerangs, plus a chance to dodge bullets and improved shield drops
-- Additional drops include piercing Piercer rifles and wall-bouncing Ricochet guns
+- Press SHIFT+1 twice quickly for +1 health and a shorter dash cooldown; boost mode allows shotguns, Scatterguns, Miniguns, lasers, grenades, homing guns, burst rifles, boomerangs, Piercers, and Ricochet guns, plus a chance to dodge bullets and improved shield drops
+- Added six dedicated parkour stages: Precision, Moving Route, Skyline, Crumble Crossing, Spike Skyline, and Switchback Precision
 - On first launch, start the guided practice or press ESC to skip it
 - Spend carried shards on speed, jump, or health upgrades before entering a selected level
 - Secret buff - enter UP, UP, DOWN, DOWN, LEFT, LEFT, RIGHT, RIGHT with the arrow keys
 
 The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. A glowing companion follows you and fires homing shots. Its activation freezes play for a short cinematic. Add an `image.png` file beside `index.html` to use your own image in the effect; a white orb with cyan trim appears when the image is absent.
 
-The campaign has 43 stages, including a one-screen Micro Sprint, four additional routes, enemy arenas, gaps, spikes, moving platforms, stairs, and three dedicated parkour levels.
+The campaign has 46 stages, including a one-screen Micro Sprint, enemy arenas, gaps, spikes, moving platforms, stairs, and six dedicated parkour levels.
 
 ## Where everything lives
 

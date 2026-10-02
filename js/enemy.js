@@ -606,14 +606,14 @@ Enemy.firePlayerBullet = function () {
   var angle = Player.aimAngle;
   var centerX = Player.x + CONFIG.PLAYER_SIZE / 2;
   var centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
-  var angles = Player.weaponType === "shotgun" ? [angle - 0.28, angle - 0.14, angle, angle + 0.14, angle + 0.28] : (Player.weaponType === "burst" ? [angle - 0.1, angle, angle + 0.1] : [angle]);
+  var angles = Player.weaponType === "scattergun" ? [angle - 0.48, angle - 0.36, angle - 0.24, angle - 0.12, angle, angle + 0.12, angle + 0.24, angle + 0.36, angle + 0.48] : (Player.weaponType === "shotgun" ? [angle - 0.28, angle - 0.14, angle, angle + 0.14, angle + 0.28] : (Player.weaponType === "burst" ? [angle - 0.1, angle, angle + 0.1] : [angle]));
   for (var shot = 0; shot < angles.length; shot++) {
     var shotAngle = angles[shot];
     Enemy.playerBullets.push({
       x: centerX + Math.cos(shotAngle) * CONFIG.PLAYER_RADIUS - 4,
       y: centerY + Math.sin(shotAngle) * CONFIG.PLAYER_RADIUS - 4,
-      vx: Math.cos(shotAngle) * (Player.weaponType === "laser" ? 12 : CONFIG.PLAYER_BULLET_SPEED),
-      vy: Math.sin(shotAngle) * (Player.weaponType === "laser" ? 12 : CONFIG.PLAYER_BULLET_SPEED),
+      vx: Math.cos(shotAngle) * (Player.weaponType === "laser" ? 12 : (Player.weaponType === "minigun" ? 10 : CONFIG.PLAYER_BULLET_SPEED)),
+      vy: Math.sin(shotAngle) * (Player.weaponType === "laser" ? 12 : (Player.weaponType === "minigun" ? 10 : CONFIG.PLAYER_BULLET_SPEED)),
       damage: (Player.weaponType === "piercer" ? 2 : (Player.weaponType === "shotgun" ? 1 : (Player.weaponType === "grenade" ? 3 : (Player.gunLevel > 1 ? 2 : 1)))) * Player.damageMultiplier,
       piercing: Player.weaponType === "laser" || Player.weaponType === "piercer" || Player.piercing,
       grenade: Player.weaponType === "grenade",

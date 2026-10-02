@@ -91,6 +91,7 @@ SelfTest.runInFrame = function (requestId) {
     Tutorial.checkpoint = null;
     Game.balanceBoostActive = false;
     Game.secretBuffCinematic = null;
+    Draw.showSecretImage = false;
     Game.score = 0;
     Game.keepPerks = false;
     Player.perks = [];
@@ -120,6 +121,16 @@ SelfTest.runInFrame = function (requestId) {
       assert(Level.grid.length === CONFIG.ROWS, "Level grid has the wrong number of rows.");
       assert(Level.startX >= 0 && Level.startY >= 0, "Player start was not found.");
       assert(Level.finishTiles.length > 0, "No finish flag was loaded.");
+      assert(Level.levels.length === 46, "The full parkour-expanded campaign was not loaded.");
+      var parkourLevels = Level.levels.filter(function (level) { return level.name.indexOf("Parkour") === 0; });
+      assert(parkourLevels.length === 6 && parkourLevels.every(function (level) {
+        return level.pieces.every(function (piece) { return !!Level.pieces[piece]; });
+      }), "The new parkour stages or their terrain pieces are missing.");
+      assert(Level.levels.length === 46, "The full parkour-expanded campaign was not loaded.");
+      var parkourLevels = Level.levels.filter(function (level) { return level.name.indexOf("Parkour") === 0; });
+      assert(parkourLevels.length === 6 && parkourLevels.every(function (level) {
+        return level.pieces.every(function (piece) { return !!Level.pieces[piece]; });
+      }), "The new parkour stages or their terrain pieces are missing.");
     });
 
     test("Solid tile collision", function () {
@@ -233,6 +244,81 @@ SelfTest.runInFrame = function (requestId) {
       Player.ammo = 1;
       Enemy.firePlayerBullet();
       assert(Enemy.playerBullets.length === 1 && Enemy.playerBullets[0].damage > 0, "Firing did not create a damaging player bullet.");
+    });
+
+    test("Scattergun fires a wide nine-pellet spread", function () {
+      resetGame();
+      Player.weaponType = "scattergun";
+      Player.hasGun = true;
+      Player.ammo = 5;
+      Player.aimAngle = 0;
+      Enemy.firePlayerBullet();
+      assert(Enemy.playerBullets.length === 9 && Enemy.playerBullets[0].vy < 0 &&
+        Enemy.playerBullets[8].vy > 0, "Scattergun did not create its wide nine-shot fan.");
+    });
+
+    test("Minigun fires fast single rounds", function () {
+      resetGame();
+      Player.weaponType = "minigun";
+      Player.hasGun = true;
+      Player.ammo = 5;
+      Player.aimAngle = 0;
+      Player.gravityMultiplier = 0;
+      Input.mouseX = Player.x + 100;
+      Input.mouseY = Player.y + CONFIG.PLAYER_SIZE / 2;
+      Input.shoot = true;
+      Player.update();
+      assert(Enemy.playerBullets.length === 1 && Enemy.playerBullets[0].vx === 10 &&
+        Player.shootCooldown === 5, "Minigun did not fire a fast single round.");
+    });
+
+    test("Shift+O toggles the custom ring image", function () {
+      resetGame();
+      Input.handleVisualKey({ code: "KeyO", repeat: false, shiftKey: true, preventDefault: function () {} });
+      Game.update();
+      assert(Draw.showSecretImage, "Shift+O did not enable the custom ring image.");
+      Input.handleVisualKey({ code: "KeyO", repeat: false, shiftKey: true, preventDefault: function () {} });
+      Game.update();
+      assert(!Draw.showSecretImage, "Shift+O did not restore E tokens.");
+    });
+
+    test("Secret ring defaults to E instead of the photo", function () {
+      resetGame();
+      var originalContext = Draw.ctx;
+      var originalDrawSecretImage = Draw.drawSecretImage;
+      var originalImageReady = Draw.secretImageReady;
+      var originalShowImage = Draw.showSecretImage;
+      var labels = [];
+      var imageCalls = 0;
+      Draw.ctx = {
+        save: function () {}, restore: function () {}, translate: function () {}, rotate: function () {},
+        scale: function () {}, beginPath: function () {}, arc: function () {}, fill: function () {}, stroke: function () {},
+        fillText: function (text) { labels.push(text); }
+      };
+      Draw.secretImageReady = true;
+      Draw.showSecretImage = false;
+      Draw.drawSecretImage = function () { imageCalls++; };
+      try {
+        Draw.drawSecretSprite(0, 0, 24);
+        assert(labels.indexOf("E") >= 0 && imageCalls === 0, "The default secret token was not E.");
+        Draw.showSecretImage = true;
+        Draw.drawSecretSprite(0, 0, 24);
+        assert(imageCalls === 1, "Custom image did not show after enabling it.");
+      } finally {
+        Draw.ctx = originalContext;
+        Draw.drawSecretImage = originalDrawSecretImage;
+        Draw.secretImageReady = originalImageReady;
+        Draw.showSecretImage = originalShowImage;
+      }
+    });
+
+    test("Weapons leave capped white screen splats", function () {
+      resetGame();
+      for (var shot = 0; shot < 60; shot++) { Game.recordPlayerShot(); }
+      assert(Game.screenSplats.length === 14 && Game.splatShotCount === 60, "Shot splats did not accumulate or respect their screen cap.");
+      Input.handleVisualKey({ key: "y", repeat: false, shiftKey: false, preventDefault: function () {} });
+      Game.update();
+      assert(Game.screenSplats.length === 0 && Game.splatShotCount === 0, "Y did not wipe screen splats and reset their buildup.");
     });
 
     test("Piercer weapon penetrates enemies", function () {
@@ -423,6 +509,62 @@ SelfTest.runInFrame = function (requestId) {
 
     test("Secret buff has no player halo", function () {
       assert(typeof Draw.secretRing === "undefined", "The secret-buff halo is still drawn around the player.");
+    });
+
+    test("Secret image ring follows the player", function () {
+      resetGame();
+      Player.secretBuff = true;
+      var originalContext = Draw.ctx;
+      var originalDrawSecretSprite = Draw.drawSecretSprite;
+      var translateX = 0;
+      var translateY = 0;
+      var savedTransforms = [];
+      var spriteTransforms = [];
+      Draw.ctx = {
+        save: function () { savedTransforms.push([translateX, translateY]); },
+        restore: function () { var saved = savedTransforms.pop(); translateX = saved[0]; translateY = saved[1]; },
+        translate: function (x, y) { translateX += x; translateY += y; },
+        scale: function () {}, beginPath: function () {}, arc: function () {},
+        fill: function () {}, stroke: function () {}, fillRect: function () {}, rotate: function () {}
+      };
+      Draw.drawSecretSprite = function (x, y) { spriteTransforms.push({ x: x, y: y, originX: translateX, originY: translateY }); };
+      try {
+        Draw.player();
+      } finally {
+        Draw.ctx = originalContext;
+        Draw.drawSecretSprite = originalDrawSecretSprite;
+      }
+      var centerX = Player.x + CONFIG.PLAYER_SIZE / 2;
+      var centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
+      assert(spriteTransforms.length === 4 && spriteTransforms.every(function (sprite) {
+        return sprite.originX === centerX && sprite.originY === centerY;
+      }), "Secret-buff images were not transformed around the player.");
+    });
+
+    test("Secret cinematic images orbit the player", function () {
+      resetGame();
+      var originalContext = Draw.ctx;
+      var originalDrawSecretSprite = Draw.drawSecretSprite;
+      var sprites = [];
+      Game.secretBuffCinematic = { frame: 90 };
+      Draw.ctx = {
+        save: function () {}, restore: function () {}, beginPath: function () {}, moveTo: function () {},
+        lineTo: function () {}, stroke: function () {}, arc: function () {}, fill: function () {},
+        fillRect: function () {}, fillText: function () {}
+      };
+      Draw.drawSecretSprite = function (x, y) { sprites.push({ x: x, y: y }); };
+      try {
+        Draw.secretCinematic();
+      } finally {
+        Draw.ctx = originalContext;
+        Draw.drawSecretSprite = originalDrawSecretSprite;
+        Game.secretBuffCinematic = null;
+      }
+      var centerX = Player.x + CONFIG.PLAYER_SIZE / 2 - Draw.cameraX;
+      var centerY = Player.y + CONFIG.PLAYER_SIZE / 2 - 80;
+      assert(sprites.length === 4 && sprites.every(function (sprite) {
+        return Math.abs(Math.hypot(sprite.x - centerX, sprite.y - centerY) - 72) < 0.01;
+      }), "Secret-cinematic images were not arranged around the player.");
     });
 
     test("Boost bullet evade chance", function () {

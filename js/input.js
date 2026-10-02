@@ -29,6 +29,8 @@ var Input = {
   balanceBoostActivation: false,
   balanceBoostPending: false,
   balanceBoostAt: 0,
+  secretImageToggle: false,
+  wipeScreenSplats: false,
   secretComboProgress: 0,
   secretBuffActivation: false,
   secretCombo: ["up", "up", "down", "down", "left", "left", "right", "right"],
@@ -63,6 +65,21 @@ Input.handleEndlessKey = function (event) {
   Input.dash = false;
   event.preventDefault();
   return true;
+};
+
+Input.handleVisualKey = function (event) {
+  if (event.repeat) { return false; }
+  if (event.shiftKey && event.code === "KeyO") {
+    Input.secretImageToggle = true;
+    event.preventDefault();
+    return true;
+  }
+  if (!event.shiftKey && (event.key === "y" || event.key === "Y")) {
+    Input.wipeScreenSplats = true;
+    event.preventDefault();
+    return true;
+  }
+  return false;
 };
 
 window.addEventListener("mousemove", function (event) { Input.updateMouse(event); });
@@ -136,6 +153,7 @@ window.addEventListener("keydown", function (event) {
     event.preventDefault();
     return;
   }
+  if (Input.handleVisualKey(event)) { return; }
   if (Input.handleEndlessKey(event)) { return; }
   if (!event.repeat && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(event.key) >= 0) {
     Input.registerSecretDirection(event.key.slice(5).toLowerCase());
