@@ -163,6 +163,63 @@ SelfTest.runInFrame = function (requestId) {
       assert(Player.dashing && Player.dashCooldown === CONFIG.DASH_COOLDOWN, "Dash did not start with its configured cooldown.");
     });
 
+    test("Only Shift+E starts Endless", function () {
+      resetGame();
+      var prevented = false;
+      Input.handleEndlessKey({ code: "KeyE", repeat: false, shiftKey: false, preventDefault: function () { prevented = true; } });
+      assert(!Input.endless && !prevented, "Plain E should not trigger an action.");
+      Tutorial.clearInput();
+      Input.handleEndlessKey({ code: "KeyE", repeat: false, shiftKey: true, preventDefault: function () { prevented = true; } });
+      assert(Input.endless && prevented, "Shift+E did not trigger Endless mode.");
+    });
+
+    test("Shift+E starts an Endless wave", function () {
+      resetGame();
+      Input.handleEndlessKey({ code: "KeyE", repeat: false, shiftKey: true, preventDefault: function () {} });
+      Game.update();
+      assert(Game.endless && Level.name === "ENDLESS WAVE 1", "Shift+E did not start the first Endless wave.");
+    });
+
+    test("Parry action and animation are removed", function () {
+      resetGame();
+      assert(typeof Player.startParry === "undefined" && typeof Draw.parryRing === "undefined" &&
+        typeof Player.parryTimer === "undefined" && typeof Input.parry === "undefined" &&
+        typeof Enemy.reflectBullets === "undefined", "Parry state, visuals, or reflection helper are still present.");
+    });
+
+    test("Stomping no longer reflects enemy shots", function () {
+      resetGame();
+      var originalHitsSolid = Collide.hitsSolid;
+      var target = makeEnemy(Player.x, Player.y + 20, 1);
+      var bullet = { x: Player.x + 8, y: Player.y + 8, vx: -4, vy: 0, owner: null };
+      Enemy.list = [target];
+      Enemy.bullets = [bullet];
+      Player.vy = 1;
+      Collide.hitsSolid = function () { return false; };
+      try {
+        Enemy.checkPlayerContact();
+      } finally {
+        Collide.hitsSolid = originalHitsSolid;
+      }
+      assert(!bullet.reflected && bullet.vx === -4, "Stomping reflected a nearby enemy shot.");
+    });
+
+    test("Player shots no longer parry enemy bullets", function () {
+      resetGame();
+      var originalHitsSolid = Collide.hitsSolid;
+      var enemyShot = { x: 104, y: 100, vx: -3, vy: 0, owner: null };
+      var playerShot = { x: 100, y: 100, vx: 5, vy: 0, damage: 1, hitTargets: [], bounces: 0 };
+      Enemy.bullets = [enemyShot];
+      Enemy.playerBullets = [playerShot];
+      Collide.hitsSolid = function () { return false; };
+      try {
+        Enemy.updatePlayerBullets();
+      } finally {
+        Collide.hitsSolid = originalHitsSolid;
+      }
+      assert(enemyShot.vx === -3 && Enemy.bullets.length === 1, "Player fire parried an enemy bullet.");
+    });
+
     test("Weapon pickup", function () {
       resetGame();
       Enemy.pickups.push({ x: Player.x + 4, y: Player.y + 4, size: 20, level: 1, weaponType: "shotgun" });
@@ -176,6 +233,40 @@ SelfTest.runInFrame = function (requestId) {
       Player.ammo = 1;
       Enemy.firePlayerBullet();
       assert(Enemy.playerBullets.length === 1 && Enemy.playerBullets[0].damage > 0, "Firing did not create a damaging player bullet.");
+    });
+
+    test("Piercer weapon penetrates enemies", function () {
+      resetGame();
+      Player.weaponType = "piercer";
+      Player.hasGun = true;
+      Player.ammo = 5;
+      Enemy.firePlayerBullet();
+      assert(Enemy.playerBullets[0].piercing && Enemy.playerBullets[0].damage === 2, "Piercer did not create a two-damage piercing shot.");
+    });
+
+    test("Ricochet weapon bounces off walls", function () {
+      resetGame();
+      Player.weaponType = "ricochet";
+      Player.hasGun = true;
+      Player.ammo = 5;
+      Enemy.firePlayerBullet();
+      Enemy.firePlayerBullet();
+      assert(Enemy.playerBullets.length === 2 && Enemy.playerBullets.every(function (bullet) {
+        return bullet.bounces === CONFIG.PLAYER_RICOCHET_BOUNCES;
+      }), "Ricochet gun did not keep firing repeated wall-bouncing shots.");
+      var bullet = Enemy.playerBullets[0];
+      var originalTile = Level.charAt(0, 0);
+      var bounced = false;
+      Level.setCharAt(0, 0, "#");
+      try {
+        bullet.x = 0; bullet.y = 0; bullet.vx = 5; bullet.vy = 0;
+        Enemy.playerBullets = [bullet];
+        Enemy.updatePlayerBullets();
+        bounced = bullet.vx < 0 && bullet.bounces === CONFIG.PLAYER_RICOCHET_BOUNCES - 1;
+      } finally {
+        Level.setCharAt(0, 0, originalTile);
+      }
+      assert(bounced, "Ricochet shot did not reverse when it hit a wall.");
     });
 
     test("Player bullets damage enemies", function () {
@@ -212,11 +303,32 @@ SelfTest.runInFrame = function (requestId) {
       assert(Player.health === healthAfterFirstHit && Player.hitTimer === CONFIG.HIT_COOLDOWN, "Hit cooldown did not block a second immediate hit.");
     });
 
+    test("Death screen selects a fresh taunt", function () {
+      resetGame();
+      var previousTaunt = Game.lastDeathTaunt;
+      Math.random = function () { return 0; };
+      Game.die("self-test");
+      assert(Game.deathTaunts.indexOf(Game.deathTaunt) >= 0, "Death did not select a configured taunt.");
+      assert(Game.deathTaunt !== previousTaunt, "Death repeated the previous taunt.");
+      assert(document.getElementById("message").textContent.indexOf("Press R to try again.") >= 0, "Death message lost the restart prompt.");
+    });
+
     test("Invincibility pickup", function () {
       resetGame();
       Enemy.pickups.push({ x: Player.x + 4, y: Player.y + 4, size: 20, type: "invincibility" });
       Enemy.collectPickups();
       assert(Player.invincible && Player.invincibleTimer === CONFIG.INVINCIBILITY_TIME, "Shield pickup did not grant its timed effect.");
+    });
+
+    test("Enemy shield pickup lasts two seconds", function () {
+      resetGame();
+      var enemy = makeEnemy(Player.x + 100, Player.y, 2);
+      var shield = { x: enemy.x + 4, y: enemy.y + 4, size: 20, type: "invincibility" };
+      Enemy.pickups = [shield];
+      enemy.targetPickup = shield;
+      assert(Enemy.collectPickup(enemy), "Enemy could not collect a shield pickup.");
+      assert(enemy.powerupShieldTimer === 120 && CONFIG.ENEMY_INVINCIBILITY_TIME === 120, "Enemy shield duration is not two seconds.");
+      assert(CONFIG.INVINCIBILITY_TIME === 360, "Player shield duration was changed with the enemy shield.");
     });
 
     test("Shard pickup", function () {
@@ -286,13 +398,13 @@ SelfTest.runInFrame = function (requestId) {
       resetGame();
       Player.hasGun = true;
       Player.weaponType = "homing";
-      Enemy.pickups = [{ weaponType: "homing" }, { weaponType: "shotgun" }, { weaponType: "burst" }, { weaponType: "boomerang" }];
+      Enemy.pickups = [{ weaponType: "homing" }, { weaponType: "shotgun" }, { weaponType: "burst" }, { weaponType: "boomerang" }, { weaponType: "piercer" }, { weaponType: "ricochet" }];
       Game.activateBalanceBoost();
       assert(Player.hasGun && Game.balanceBoostWeapons.indexOf(Player.weaponType) >= 0, "Boost removed a supported gun the player already owned.");
-      assert(Enemy.pickups.length === 4 && Enemy.pickups.every(function (pickup) { return Game.balanceBoostWeapons.indexOf(pickup.weaponType) >= 0; }), "Boost filtered out an implemented gun.");
+      assert(Enemy.pickups.length === 6 && Enemy.pickups.every(function (pickup) { return Game.balanceBoostWeapons.indexOf(pickup.weaponType) >= 0; }), "Boost filtered out an implemented gun.");
     });
 
-    test("Boost can drop all six guns", function () {
+    test("Boost can drop every supported gun", function () {
       for (var weaponIndex = 0; weaponIndex < Game.balanceBoostWeapons.length; weaponIndex++) {
         resetGame();
         Game.balanceBoostActive = true;

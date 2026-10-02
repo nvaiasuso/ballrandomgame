@@ -57,6 +57,14 @@ Input.refreshMouseWorld = function () {
   Input.mouseX = Input.screenX + Draw.cameraX;
 };
 
+Input.handleEndlessKey = function (event) {
+  if (event.repeat || event.code !== "KeyE" || !event.shiftKey) { return false; }
+  Input.endless = true;
+  Input.dash = false;
+  event.preventDefault();
+  return true;
+};
+
 window.addEventListener("mousemove", function (event) { Input.updateMouse(event); });
 window.addEventListener("mousedown", function (event) {
   AudioFX.unlock();
@@ -128,6 +136,7 @@ window.addEventListener("keydown", function (event) {
     event.preventDefault();
     return;
   }
+  if (Input.handleEndlessKey(event)) { return; }
   if (!event.repeat && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(event.key) >= 0) {
     Input.registerSecretDirection(event.key.slice(5).toLowerCase());
   }
@@ -162,14 +171,6 @@ window.addEventListener("keydown", function (event) {
   }
   if (event.shiftKey && (event.key === "y" || event.key === "Y")) {
     Input.versionToggle = true;
-    event.preventDefault();
-  }
-  if (!event.repeat && !event.shiftKey && (event.key === "g" || event.key === "G")) {
-    Input.gamble = true;
-    event.preventDefault();
-  }
-  if (!event.repeat && !event.shiftKey && (event.key === "e" || event.key === "E")) {
-    Input.endless = true;
     event.preventDefault();
   }
   if (!event.repeat && !event.shiftKey && (event.key === "p" || event.key === "P")) {

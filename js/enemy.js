@@ -305,7 +305,7 @@ Enemy.collectPickup = function (e) {
   if (e.x + CONFIG.ENEMY_SIZE <= pickup.x || e.x >= pickup.x + pickup.size ||
       e.y + CONFIG.ENEMY_SIZE <= pickup.y || e.y >= pickup.y + pickup.size) { return false; }
   if (pickup.type === "invincibility") {
-    e.powerupShieldTimer = CONFIG.INVINCIBILITY_TIME;
+    e.powerupShieldTimer = CONFIG.ENEMY_INVINCIBILITY_TIME;
   } else {
     if (pickup.type === "weaponShard") {
       e.weaponType = e.weaponType || "burst";
@@ -414,7 +414,6 @@ Enemy.checkPlayerContact = function () {
     var landingY = e.y - CONFIG.PLAYER_SIZE;
     var landingBlocked = Collide.hitsSolid(Player.x, landingY, CONFIG.PLAYER_SIZE, CONFIG.PLAYER_SIZE);
     if (overlaps && !e.invulnerable && !(e.powerupShieldTimer > 0) && !Player.dashing && Player.vy >= 0 && Player.y + CONFIG.PLAYER_SIZE - e.y < CONFIG.TILE / 2 && !landingBlocked) {
-      Enemy.reflectBullets(Player.x + CONFIG.PLAYER_SIZE / 2, Player.y + CONFIG.PLAYER_SIZE / 2, 58);
       Player.y = e.y - CONFIG.PLAYER_SIZE;
       Player.vy = -CONFIG.JUMP_POWER * 0.55;
       Enemy.kill(i, true);
@@ -615,12 +614,12 @@ Enemy.firePlayerBullet = function () {
       y: centerY + Math.sin(shotAngle) * CONFIG.PLAYER_RADIUS - 4,
       vx: Math.cos(shotAngle) * (Player.weaponType === "laser" ? 12 : CONFIG.PLAYER_BULLET_SPEED),
       vy: Math.sin(shotAngle) * (Player.weaponType === "laser" ? 12 : CONFIG.PLAYER_BULLET_SPEED),
-      damage: (Player.weaponType === "shotgun" ? 1 : (Player.weaponType === "grenade" ? 3 : (Player.gunLevel > 1 ? 2 : 1))) * Player.damageMultiplier,
-      piercing: Player.weaponType === "laser" || Player.piercing,
+      damage: (Player.weaponType === "piercer" ? 2 : (Player.weaponType === "shotgun" ? 1 : (Player.weaponType === "grenade" ? 3 : (Player.gunLevel > 1 ? 2 : 1)))) * Player.damageMultiplier,
+      piercing: Player.weaponType === "laser" || Player.weaponType === "piercer" || Player.piercing,
       grenade: Player.weaponType === "grenade",
       homing: Player.weaponType === "homing",
       boomerang: Player.weaponType === "boomerang",
-      bounces: Player.ricochet ? CONFIG.PLAYER_RICOCHET_BOUNCES : 0,
+      bounces: Player.weaponType === "ricochet" ? CONFIG.PLAYER_RICOCHET_BOUNCES : (Player.ricochet ? CONFIG.PLAYER_RICOCHET_BOUNCES : 0),
       life: 0,
       hitTargets: []
     });
@@ -664,19 +663,6 @@ Enemy.updatePlayerBullets = function () {
     bullet.x += bullet.vx;
     bullet.y += bullet.vy;
     var hit = false;
-    for (var reflectedIndex = Enemy.bullets.length - 1; reflectedIndex >= 0; reflectedIndex--) {
-      var enemyBullet = Enemy.bullets[reflectedIndex];
-      if (bullet.x + 8 > enemyBullet.x && bullet.x < enemyBullet.x + 8 && bullet.y + 8 > enemyBullet.y && bullet.y < enemyBullet.y + 8) {
-        enemyBullet.reflected = true;
-        enemyBullet.vx = -enemyBullet.vx * 1.15;
-        enemyBullet.vy = -enemyBullet.vy * 1.15;
-        Enemy.playerBullets.splice(b, 1);
-        Game.impact(3, 0);
-        hit = true;
-        break;
-      }
-    }
-    if (hit) { continue; }
     if (Enemy.boss && bullet.x + 8 > Enemy.boss.x && bullet.x < Enemy.boss.x + CONFIG.BOSS_SIZE &&
         bullet.y + 8 > Enemy.boss.y && bullet.y < Enemy.boss.y + CONFIG.BOSS_SIZE) {
       Enemy.damageBoss(bullet.damage);
@@ -1039,22 +1025,14 @@ Enemy.update = function () {
       bullet.vy += (Math.sin(aimAngle) * speed - bullet.vy) * 0.035;
     }
     bullet.x += bullet.vx; bullet.y += bullet.vy;
-    if (bullet.reflected && bullet.owner && !bullet.owner.dead && bullet.x + 8 > bullet.owner.x && bullet.x < bullet.owner.x + (bullet.owner === Enemy.boss ? CONFIG.BOSS_SIZE : CONFIG.ENEMY_SIZE) &&
-        bullet.y + 8 > bullet.owner.y && bullet.y < bullet.owner.y + (bullet.owner === Enemy.boss ? CONFIG.BOSS_SIZE : CONFIG.ENEMY_SIZE)) {
-      if (bullet.owner === Enemy.boss) { Enemy.damageBoss(2); }
-      else { Enemy.damage(Enemy.list.indexOf(bullet.owner), 2); }
-      for (var spark = 0; spark < 6; spark++) {
-        Enemy.effects.push({ x: bullet.x, y: bullet.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 16, color: "#ffcf56", size: 4 });
-      }
-      Enemy.bullets.splice(b, 1);
-    } else if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8)) {
+    if (Collide.hitsSolid(bullet.x, bullet.y, 8, 8)) {
       if (bullet.bouncing && bullet.bounceCount > 0) {
         bullet.vx = -bullet.vx; bullet.vy = -bullet.vy; bullet.bounceCount--;
         bullet.x -= bullet.vx; bullet.y -= bullet.vy;
       } else { Enemy.bullets.splice(b, 1); }
     } else if (Enemy.bulletOffscreen(bullet)) {
       Enemy.bullets.splice(b, 1);
-    } else if (!bullet.reflected && !Player.invincible && !Player.dashing && bullet.x + 8 > Player.x && bullet.x < Player.x + CONFIG.PLAYER_SIZE &&
+    } else if (!Player.invincible && !Player.dashing && bullet.x + 8 > Player.x && bullet.x < Player.x + CONFIG.PLAYER_SIZE &&
                bullet.y + 8 > Player.y && bullet.y < Player.y + CONFIG.PLAYER_SIZE) {
       Enemy.bullets.splice(b, 1);
       if (!Game.balanceBoostActive || Math.random() >= 0.3) { Player.takeDamage("You were shot."); }
@@ -1361,18 +1339,6 @@ Enemy.bossLaser = function () {
   var laserBias = Math.sign(Game.habits.right - Game.habits.left) * Math.min(45, Math.floor((Game.habits.right + Game.habits.left) / 120));
   Enemy.hazards.push({ type: "laser", x: boss.x + CONFIG.BOSS_SIZE / 2, y: boss.y + CONFIG.BOSS_SIZE / 2,
     targetX: Player.x + CONFIG.PLAYER_SIZE / 2 + laserBias, targetY: Player.y + CONFIG.PLAYER_SIZE / 2 + (Game.habits.recentJump > 0 ? 18 : 0), warning: 35, life: 55, owner: boss });
-};
-
-Enemy.reflectBullets = function (x, y, radius) {
-  for (var i = 0; i < Enemy.bullets.length; i++) {
-    var bullet = Enemy.bullets[i];
-    var dx = bullet.x + 4 - x, dy = bullet.y + 4 - y;
-    if (dx * dx + dy * dy <= radius * radius) {
-      bullet.reflected = true;
-      bullet.vx = -bullet.vx * 1.15;
-      bullet.vy = -bullet.vy * 1.15;
-    }
-  }
 };
 
 Enemy.spawnSplitterMinion = function (x, y) {

@@ -122,6 +122,8 @@ Draw.hud = function () {
     else if (Player.weaponType === "homing") { weaponText = "WEAPON: HOMING " + Player.ammo; }
     else if (Player.weaponType === "burst") { weaponText = "WEAPON: BURST " + Player.ammo; }
     else if (Player.weaponType === "boomerang") { weaponText = "WEAPON: BOOMERANG " + Player.ammo; }
+    else if (Player.weaponType === "piercer") { weaponText = "WEAPON: PIERCER " + Player.ammo; }
+    else if (Player.weaponType === "ricochet") { weaponText = "WEAPON: RICOCHET " + Player.ammo; }
     else if (Player.gunLevel > 2) { weaponText = "WEAPON: ULTRA " + Math.ceil(Player.weaponTimer / 60) + "s"; }
     else if (Player.gunLevel > 1) { weaponText = "WEAPON: HEAVY " + Math.ceil(Player.weaponTimer / 60) + "s"; }
     else if (Player.hasGun) { weaponText = "WEAPON: SIDEARM " + Player.ammo; }
@@ -144,8 +146,13 @@ Draw.hud = function () {
     ctx.textAlign = "center";
     ctx.font = "bold 42px monospace";
     ctx.fillText(Game.mode === "dead" ? "YOU DIED" : "YOU WIN", CONFIG.CANVAS_W / 2, 170);
+    if (Game.mode === "dead") {
+      ctx.font = "12px monospace";
+      ctx.fillStyle = "#ffcf56";
+      ctx.fillText(Game.deathTaunt || "The enemies got you this time.", CONFIG.CANVAS_W / 2, 211);
+    }
     ctx.font = "18px monospace";
-    ctx.fillText("Press R to restart", CONFIG.CANVAS_W / 2, 215);
+    ctx.fillText("Press R to restart", CONFIG.CANVAS_W / 2, Game.mode === "dead" ? 247 : 215);
     ctx.textAlign = "left";
   }
   if (Game.mode === "paused") {

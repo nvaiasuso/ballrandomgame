@@ -32,7 +32,7 @@ var Game = {
   keepPerks: false,
   pendingLevel: 0,
   balanceBoostActive: false,
-  balanceBoostWeapons: ["shotgun", "laser", "grenade", "homing", "burst", "boomerang"],
+  balanceBoostWeapons: ["shotgun", "laser", "grenade", "homing", "burst", "boomerang", "piercer", "ricochet"],
   upgradeChoices: [],
   prejoinUpgrades: [],
   transitioning: false,
@@ -44,6 +44,40 @@ var Game = {
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };
 Game.secretBuffCinematic = null;
+Game.deathTaunts = [
+  "Your aim is like my grandma's - she doesn't even play.",
+  "Bro is fighting the air.",
+  "Did you just miss a stationary target?",
+  "Your bullets have better dodging skills than the enemies.",
+  "I've seen potatoes aim better.",
+  "Bro's crosshair is just decoration.",
+  "Are you aiming with your elbows?",
+  "The enemy isn't even moving.",
+  "Your accuracy just filed for retirement.",
+  "You couldn't hit water if you fell out of a boat.",
+  "Bro shoots first and thinks later.",
+  "That bullet went to a completely different game.",
+  "Your aim needs a GPS.",
+  "Even the wall is disappointed.",
+  "Bro has negative precision.",
+  "The enemy is safe. Very safe.",
+  "Was that a warning shot?",
+  "You're not missing - the bullets are escaping you.",
+  "Your aim is sponsored by random chance.",
+  "Bro turned aiming into a guessing game."
+];
+Game.deathTaunt = "";
+Game.lastDeathTaunt = "";
+
+Game.chooseDeathTaunt = function () {
+  var options = Game.deathTaunts;
+  if (options.length > 1 && Game.lastDeathTaunt) {
+    options = options.filter(function (taunt) { return taunt !== Game.lastDeathTaunt; });
+  }
+  Game.deathTaunt = options[Math.floor(Math.random() * options.length)];
+  Game.lastDeathTaunt = Game.deathTaunt;
+  return Game.deathTaunt;
+};
 
 Game.enemySpeedFactor = function () {
   return Game.enemySpeedScale;
@@ -463,6 +497,7 @@ Game.die = function (reason) {
   if (Player.invincible) { return; }
   if (typeof Tutorial !== "undefined" && Tutorial.active) { Tutorial.respawn(); return; }
   Game.mode = "dead";
+  var taunt = Game.chooseDeathTaunt();
   Player.startDeathAnimation();
   AudioFX.hit();
   AudioFX.death();
@@ -477,6 +512,7 @@ Game.update = function () {
     if (Input.tutorialSkip) { Input.tutorialSkip = false; Tutorial.skip(); }
     return;
   }
+  if (Game.mode === "briefing") { return; }
   if (typeof Tutorial !== "undefined" && Tutorial.active) {
     if (Input.tutorialSkip) { Input.tutorialSkip = false; Tutorial.skip(); return; }
     if (Input.restart) { Tutorial.restartCurrentStep(); return; }
