@@ -49,6 +49,7 @@ Input.registerSecretDirection = function (direction) {
 };
 
 Input.updateMouse = function (event) {
+  if (Game && Game.autoplay) { return; }
   var rect = Draw.canvas.getBoundingClientRect();
   Input.screenX = (event.clientX - rect.left) * CONFIG.CANVAS_W / rect.width;
   Input.mouseX = Input.screenX + Draw.cameraX;
@@ -56,6 +57,7 @@ Input.updateMouse = function (event) {
 };
 
 Input.refreshMouseWorld = function () {
+  if (Game && Game.autoplay) { return; }
   Input.mouseX = Input.screenX + Draw.cameraX;
 };
 

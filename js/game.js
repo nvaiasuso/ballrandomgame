@@ -774,6 +774,16 @@ Game.updateAutoplay = function () {
     Input.jump = true;
   }
 
+  if (Player.onGround && target && target.x !== undefined && target.y !== undefined) {
+    var targetCenterX = target.x + (target.size || CONFIG.ENEMY_SIZE) / 2;
+    var targetCenterY = target.y + (target.size || CONFIG.ENEMY_SIZE) / 2;
+    var targetGap = Math.abs(targetCenterX - centerX);
+    var targetHeight = Math.abs(targetCenterY - centerY);
+    if (targetGap < 90 && targetHeight < 60 && targetCenterY < centerY - 12) {
+      Input.jump = true;
+    }
+  }
+
   if (Player.onGround && tooFarFromGoal && distanceToTarget > 32) {
     Input.jump = true;
   }

@@ -80,7 +80,15 @@ Player.update = function () {
   Player.unstick();
   var wasOnGround = Player.onGround;
   var centerX = Player.x + size / 2, centerY = Player.y + size / 2;
-  var aimX = Input.mouseX - centerX, aimY = Input.mouseY - centerY;
+  var aimX;
+  var aimY;
+  if (Game && Game.autoplay) {
+    aimX = Math.cos(Player.aimAngle || 0) * 120;
+    aimY = Math.sin(Player.aimAngle || 0) * 120;
+  } else {
+    aimX = Input.mouseX - centerX;
+    aimY = Input.mouseY - centerY;
+  }
   if (aimX !== 0 || aimY !== 0) { Player.aimAngle = Math.atan2(aimY, aimX); }
   Player.vx = 0;
   if (Input.left) { Player.vx = -CONFIG.MOVE_SPEED * Player.speedMultiplier; }
