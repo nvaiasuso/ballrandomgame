@@ -4,10 +4,81 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ROLLER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261002-briefing-noselect">
 </head>
 <body>
-  <h1>ROLLER</h1>
+  <div id="title-screen" aria-live="polite">
+    <div class="opening">
+      <div class="logo-ball"></div>
+      <span class="skip-hint">press anything to skip</span>
+    </div>
+
+    <div id="title-menu-panel" class="title-menu-panel" hidden>
+      <div class="title-menu-box">
+        <p id="title-menu-kicker" class="menu-kicker">LEVEL SELECT</p>
+        <h2 id="title-menu-title">Choose your run</h2>
+        <div id="title-menu-list" class="title-menu-list"></div>
+        <div class="title-menu-actions">
+          <button id="title-menu-close" type="button">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="title-screen-backdrop">
+      <div class="haze"></div>
+      <div class="mote mote-a"></div>
+      <div class="mote mote-b"></div>
+      <div class="mote mote-c"></div>
+      <div class="floor"></div>
+      <div class="ball"></div>
+      <div class="impact"></div>
+    </div>
+
+    <div id="title-preview-card" class="title-preview-card" aria-live="polite">
+      <span id="title-preview-label" class="title-preview-label">Boss Preview</span>
+      <strong id="title-preview-name" class="title-preview-name">BOSS ARENA</strong>
+      <span id="title-preview-badge" class="title-preview-badge">THREAT LEVEL: BOSS</span>
+    </div>
+
+    <div class="title-screen-content">
+      <p class="kicker">PRESS START</p>
+      <h1 class="title-wordmark">
+        <span>R</span><span>O</span><span>L</span><span>L</span><span>E</span><span>R</span>
+      </h1>
+      <p class="tagline">Roll. Dodge. Loot a gun off whatever just tried to kill you.</p>
+
+      <nav class="title-menu" aria-label="Main menu">
+        <button id="start-run-button" class="menu-btn primary" type="button">Start Run <span class="pop">▸</span></button>
+        <button id="level-select-button" class="menu-btn" type="button">Level Select <span class="pop">▸</span></button>
+        <button id="upgrade-button" class="menu-btn" type="button">Upgrades <span class="pop">▸</span></button>
+        <button id="instructions-button" class="menu-btn" type="button">Instructions <span class="pop">▸</span></button>
+        <button id="settings-button" class="menu-btn" type="button">Settings <span class="pop">▸</span></button>
+        <button id="console-button" class="menu-btn" type="button">Console <span class="pop">▸</span></button>
+      </nav>
+    </div>
+
+    <div class="footer">
+      <span>v0.1</span>
+      <span>↑ ↓ to navigate · Enter to select</span>
+    </div>
+  </div>
+
+  <div id="debug-console-panel" class="debug-console-panel">
+    <div class="debug-console-box">
+      <div class="debug-console-header">
+        <div>
+          <p class="menu-kicker">DEBUG CONSOLE</p>
+          <h2>Run log</h2>
+        </div>
+        <button id="debug-console-close" type="button">CLOSE</button>
+      </div>
+      <div id="debug-console-output" class="debug-console-output"></div>
+    </div>
+  </div>
+
   <div id="game-shell">
   <div id="hud" aria-live="polite">
     <span id="level-hud">LEVEL</span>
@@ -49,7 +120,7 @@
   </div>
   <p id="message">Loading...</p>
   <p id="tutorial-message" aria-live="polite"></p>
-  <p class="controls">
+  <p class="controls" hidden>
     LEFT / RIGHT or A / D to roll &nbsp;&middot;&nbsp;
     SPACE / UP to jump &nbsp;&middot;&nbsp;
     Collect guns, aim with the mouse, then click or press X to fire &nbsp;&middot;&nbsp; SHIFT to dash &nbsp;&middot;&nbsp;

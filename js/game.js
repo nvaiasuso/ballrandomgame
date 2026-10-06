@@ -44,6 +44,8 @@ var Game = {
   checkpoint: { level: -1, x: 0, y: 0, nextX: 640 },
   tutorial: { active: false, step: 0, wrongTimer: 0 },
   easyMode: false,
+  autoplay: false,
+  autoplayLevelIndex: 0,
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };
 Game.secretBuffCinematic = null;
@@ -685,10 +687,140 @@ Game.die = function (reason) {
   AudioFX.death();
   Game.showMessage(reason + " Press R to try again.");
 };
+
+Game.updateAutoplay = function () {
+  if (!Game.autoplay) { return; }
+
+  if (!Player.hasGun || Player.ammo <= 0) {
+    Player.hasGun = true;
+    Player.weaponType = "laser";
+    Player.gunLevel = 1;
+    Player.ammo = 999;
+  }
+
+  Input.left = false;
+  Input.right = false;
+  Input.jump = false;
+  Input.dash = false;
+  Input.shoot = false;
+
+  var centerX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var centerY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  var goalX = Level.finishTiles && Level.finishTiles.length ? Level.finishTiles[0].x + 20 : Player.x + 260;
+  if (Enemy.boss && !Enemy.boss.dead) {
+    goalX = Enemy.boss.x + CONFIG.BOSS_SIZE / 2;
+  }
+
+  var target = null;
+  var targetScore = -Infinity;
+  var targetX = goalX;
+
+  if (Enemy.list && Enemy.list.length) {
+    for (var i = 0; i < Enemy.list.length; i++) {
+      var enemy = Enemy.list[i];
+      if (!enemy || enemy.dead) { continue; }
+      var enemyCenterX = enemy.x + CONFIG.ENEMY_SIZE / 2;
+      var enemyCenterY = enemy.y + CONFIG.ENEMY_SIZE / 2;
+      var dx = Math.abs(enemyCenterX - centerX);
+      var dy = Math.abs(enemyCenterY - centerY);
+      var danger = (dx < 220 ? 180 - dx * 0.4 : 0) + (dy < 120 ? 60 - dy * 0.2 : 0) + (enemy.type === "boss" ? 110 : 0);
+      if (danger > targetScore) {
+        target = enemy;
+        targetScore = danger;
+        targetX = enemyCenterX;
+      }
+    }
+  }
+
+  if (!target && Enemy.pickups && Enemy.pickups.length) {
+    var bestPickup = null;
+    var bestPickupDistance = Infinity;
+    for (var j = 0; j < Enemy.pickups.length; j++) {
+      var pickup = Enemy.pickups[j];
+      if (!pickup) { continue; }
+      var pickupX = pickup.x + pickup.size / 2;
+      var pickupY = pickup.y + pickup.size / 2;
+      var pickupDistance = Math.abs(pickupX - centerX) + Math.abs(pickupY - centerY);
+      if (pickupDistance < bestPickupDistance) {
+        bestPickupDistance = pickupDistance;
+        bestPickup = pickup;
+      }
+    }
+    if (bestPickup) {
+      target = bestPickup;
+      targetX = bestPickup.x + bestPickup.size / 2;
+      targetScore = 90 - bestPickupDistance * 0.15;
+    }
+  }
+
+  if (!target) {
+    targetX = goalX;
+  }
+
+  var direction = targetX > centerX ? 1 : -1;
+  var distanceToTarget = Math.abs(targetX - centerX);
+  if (distanceToTarget > 26) {
+    Input.left = direction < 0;
+    Input.right = direction > 0;
+  }
+
+  var probeX = Player.x + (direction > 0 ? CONFIG.PLAYER_SIZE + 12 : -12);
+  var floorAhead = Collide.hitsSolid(probeX, Player.y + CONFIG.PLAYER_SIZE + 2, CONFIG.PLAYER_SIZE, 2);
+  var edgeAhead = !Collide.hitsSolid(probeX, Player.y + CONFIG.PLAYER_SIZE + 8, CONFIG.PLAYER_SIZE, 2);
+  var spikeAhead = Collide.hitsSpike(probeX, Player.y + CONFIG.PLAYER_SIZE - 8, CONFIG.PLAYER_SIZE, 12);
+  var tooFarFromGoal = Math.abs(goalX - centerX) > 90;
+
+  if (Player.onGround && (edgeAhead || spikeAhead) && !floorAhead) {
+    Input.jump = true;
+  }
+
+  if (Player.onGround && tooFarFromGoal && distanceToTarget > 32) {
+    Input.jump = true;
+  }
+
+  if (Player.onGround && Player.dashCooldown === 0 && distanceToTarget > 150) {
+    Input.dash = true;
+  }
+
+  if (target && target.x !== undefined && target.y !== undefined) {
+    var targetCenterX = target.x + (target.size || CONFIG.ENEMY_SIZE) / 2;
+    var targetCenterY = target.y + (target.size || CONFIG.ENEMY_SIZE) / 2;
+    var targetDistance = Math.abs(targetCenterX - centerX);
+    if (Player.hasGun && Player.ammo > 0 && Player.shootCooldown === 0 && targetDistance < 260 && Math.abs(targetCenterY - centerY) < 140) {
+      Input.shoot = true;
+      Player.aimAngle = Math.atan2(targetCenterY - centerY, targetCenterX - centerX);
+    }
+  }
+
+  if (Enemy.list && Enemy.list.length && Player.hasGun && Player.ammo > 0) {
+    var bestEnemy = null;
+    var bestEnemyDist = Infinity;
+    for (var k = 0; k < Enemy.list.length; k++) {
+      var enemyCandidate = Enemy.list[k];
+      if (!enemyCandidate || enemyCandidate.dead) { continue; }
+      var enemyCandidateX = enemyCandidate.x + CONFIG.ENEMY_SIZE / 2;
+      var enemyCandidateY = enemyCandidate.y + CONFIG.ENEMY_SIZE / 2;
+      var candidateDist = Math.abs(enemyCandidateX - centerX) + Math.abs(enemyCandidateY - centerY);
+      if (candidateDist < bestEnemyDist) {
+        bestEnemyDist = candidateDist;
+        bestEnemy = enemyCandidate;
+      }
+    }
+    if (bestEnemy) {
+      var bestEnemyCenterX = bestEnemy.x + CONFIG.ENEMY_SIZE / 2;
+      var bestEnemyCenterY = bestEnemy.y + CONFIG.ENEMY_SIZE / 2;
+      if (Math.abs(bestEnemyCenterX - centerX) < 260 && Math.abs(bestEnemyCenterY - centerY) < 150) {
+        Input.shoot = true;
+        Player.aimAngle = Math.atan2(bestEnemyCenterY - centerY, bestEnemyCenterX - centerX);
+      }
+    }
+  }
+};
   
 // --- ONE FRAME --------------------------------------------------------  
 Game.update = function () {  
     Game.frame++;
+    if (Game.autoplay) { Game.updateAutoplay(); }
 
   if (Input.secretImageToggle) {
     Input.secretImageToggle = false;

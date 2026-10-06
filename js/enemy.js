@@ -333,11 +333,45 @@ Enemy.collectPickup = function (e) {
   return true;
 };
 
+Enemy.getPreferredCombatRange = function (e) {
+  if (e.turret || e.flying || e.burrow || e.suicide) { return 120; }
+  if (e.type === "q" || e.type === "t" || e.laser || (e.weaponPower || 0) >= 2) { return 200; }
+  if (e.type === "r" || e.type === "b" || e.type === "m" || e.type === "k") { return 150; }
+  return 170;
+};
+
+Enemy.getPlayerPrediction = function (e) {
+  var playerCenterX = Player.x + CONFIG.PLAYER_SIZE / 2;
+  var playerCenterY = Player.y + CONFIG.PLAYER_SIZE / 2;
+  var dx = playerCenterX - (e.x + CONFIG.ENEMY_SIZE / 2);
+  var dy = playerCenterY - (e.y + CONFIG.ENEMY_SIZE / 2);
+  var distance = Math.hypot(dx, dy) || 1;
+  var leadFrames = Math.max(6, Math.min(18, Math.round(distance / 26)));
+  var lateralBias = Math.sin(Game.frame / 24 + e.x) * 24;
+  var verticalBias = Player.onGround ? 0 : 18;
+  return {
+    x: playerCenterX + Player.vx * leadFrames + lateralBias,
+    y: playerCenterY + Player.vy * leadFrames + verticalBias
+  };
+};
+
 Enemy.chase = function (e) {
   if (e.turret) { return; }
   var pickupTarget = e.targetPickup;
   var targetX = pickupTarget ? pickupTarget.x + pickupTarget.size / 2 : Player.x + CONFIG.PLAYER_SIZE / 2;
   var targetY = pickupTarget ? pickupTarget.y + pickupTarget.size / 2 : Player.y + CONFIG.PLAYER_SIZE / 2;
+  if (!pickupTarget && !e.flying) {
+    var preferredRange = Enemy.getPreferredCombatRange(e);
+    var distanceToPlayer = Math.hypot(Player.x - e.x, Player.y - e.y);
+    if (distanceToPlayer < preferredRange * 0.6) {
+      var strafeDirection = Player.x < e.x ? 1 : -1;
+      targetX = Player.x + strafeDirection * 80 + Math.sin(Game.frame / 12 + e.x) * 32;
+    } else if (distanceToPlayer > preferredRange + 40) {
+      targetX = Player.x;
+    } else {
+      targetX = Player.x + ((e.flankSide || (Math.sin(Game.frame / 18 + e.x) >= 0 ? 1 : -1)) * 70);
+    }
+  }
   if (e.flanker && !pickupTarget) { targetX += e.flankSide * 105; }
   var enemyCenterX = e.x + CONFIG.ENEMY_SIZE / 2;
   var targetDirection = targetX < enemyCenterX ? -1 : 1;
@@ -1558,8 +1592,9 @@ Enemy.shoot = function (e) {
   var learnedJumpBias = Game.habits.jumps > Game.habits.shots / 2 ? 24 : 0;
   var dashHeavy = Game.habits.dashes > Game.habits.shots * 1.2;
   var leadFrames = CONFIG.LEAD_FRAMES + (dashHeavy && (e.type === "q" || e.type === "t" || e.laser) ? 8 : 0);
-  var px = Player.x + CONFIG.PLAYER_SIZE / 2 + Player.vx * leadFrames + movementBias;
-  var py = Player.y + CONFIG.PLAYER_SIZE / 2 + learnedJumpBias + (Game.habits.recentJump > 0 ? 18 : 0);
+  var prediction = Enemy.getPlayerPrediction(e);
+  var px = prediction.x + movementBias;
+  var py = prediction.y + learnedJumpBias + (Game.habits.recentJump > 0 ? 18 : 0);
   var dx = px - ex, dy = py - ey, dist = Math.sqrt(dx * dx + dy * dy);
   if (dist === 0) { return; }
   Enemy.companionRetaliate(e);
@@ -1570,6 +1605,10 @@ Enemy.shoot = function (e) {
   var angles = e.weaponType === "shotgun" ? [-0.16, 0, 0.16] :
     (e.weaponType === "burst" ? [-0.1, 0, 0.1] : (e.burst ? [-0.12, 0, 0.12] : (e.type === "w" ? [0, Math.PI / 2, Math.PI, Math.PI * 1.5] : [0])));
   if (e.type === "r") { angles = [-0.24, -0.12, 0, 0.12, 0.24]; }
+  if (e.type === "q" || e.type === "t" || e.laser || (e.weaponPower || 0) >= 2) {
+    var smartSpread = Math.min(0.35, 0.12 + Math.max(0, 1 - Math.abs(Player.vx) / 8) * 0.2);
+    angles = [-smartSpread, 0, smartSpread];
+  }
   for (var shot = 0; shot < angles.length; shot++) {
     var angle = Math.atan2(dy, dx) + angles[shot];
     var bulletSpeed = e.weaponType === "laser" ? Math.min(14, e.bulletSpeed * 1.5) : e.bulletSpeed;
