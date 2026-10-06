@@ -24,18 +24,30 @@ var Level = {
 
 // --- STEP 1: read the two data files ----------------------------------
 Level.loadData = function (whenDone) {
-  function loadJson(path) {
-    return fetch(path).then(function (response) {
-      if (!response.ok) { throw new Error(path + " returned HTTP " + response.status); }
-      return response.json();
-    });
+  function loadJson(paths) {
+    var candidates = Array.isArray(paths) ? paths : [paths];
+    function tryNext(index) {
+      if (index >= candidates.length) {
+        return Promise.reject(new Error(candidates.join(" or ") + " returned HTTP 404"));
+      }
+      var path = candidates[index];
+      return fetch(path).then(function (response) {
+        if (!response.ok) {
+          if (index < candidates.length - 1) { return tryNext(index + 1); }
+          throw new Error(path + " returned HTTP " + response.status);
+        }
+        return response.json();
+      });
+    }
+    return tryNext(0);
   }
-  Promise.all([loadJson("data/pieces.json"), loadJson("data/levels.json?v=20261002-weapon-trials")]).then(function (files) {
+  Promise.all([loadJson("data/pieces.json"), loadJson(["data/levels.json", "data/levels.json?v=20261002-weapon-trials"])]).then(function (files) {
     Level.pieces = files[0];
     Level.levels = files[1].levels;
     whenDone();
   }, function (error) {
-    document.getElementById("message").textContent = "Could not load level data: " + error.message;
+    var message = error && error.message ? error.message : String(error);
+    document.getElementById("message").textContent = "Could not load level data: " + message;
     console.error(error);
   });
 };
