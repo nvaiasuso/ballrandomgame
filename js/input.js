@@ -29,6 +29,9 @@ var Input = {
   balanceBoostActivation: false,
   balanceBoostPending: false,
   balanceBoostAt: 0,
+  secretImageFlashActivation: false,
+  secretImageFlashPending: false,
+  secretImageFlashAt: 0,
   secretImageToggle: false,
   wipeScreenSplats: false,
   secretComboProgress: 0,
@@ -65,6 +68,20 @@ Input.handleEndlessKey = function (event) {
   if (event.repeat || event.code !== "KeyE" || !event.shiftKey) { return false; }
   Input.endless = true;
   Input.dash = false;
+  event.preventDefault();
+  return true;
+};
+
+Input.handleSecretImageFlashKey = function (event, now) {
+  if (event.repeat || !event.shiftKey || event.code !== "KeyL") { return false; }
+  var flashTime = typeof now === "number" ? now : Date.now();
+  if (Input.secretImageFlashPending && flashTime - Input.secretImageFlashAt <= 400) {
+    Input.secretImageFlashPending = false;
+    Input.secretImageFlashActivation = true;
+  } else {
+    Input.secretImageFlashPending = true;
+    Input.secretImageFlashAt = flashTime;
+  }
   event.preventDefault();
   return true;
 };
@@ -160,6 +177,7 @@ window.addEventListener("keydown", function (event) {
   if (!event.repeat && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(event.key) >= 0) {
     Input.registerSecretDirection(event.key.slice(5).toLowerCase());
   }
+  if (Input.handleSecretImageFlashKey(event)) { return; }
   if (event.shiftKey && (event.code === "KeyQ" || event.key === "q" || event.key === "Q")) {
     var skipTime = Date.now();
     if (!event.repeat && Input.adminSkipPending && skipTime - Input.adminSkipAt <= 400) {

@@ -49,6 +49,47 @@ var Game = {
   habits: { jumps: 0, dashes: 0, shots: 0, left: 0, right: 0, corners: 0, recentJump: 0 }
 };
 Game.secretBuffCinematic = null;
+Game.secretBuffImageFlashTimer = 0;
+Game.secretBuffImageFlashX = 0;
+Game.secretBuffImageFlashY = 0;
+Game.secretBuffImageFlashSize = 0;
+Game.secretBuffImageFlashStreaks = [];
+Game.startSecretBuffImageFlash = function () {
+  if (!Player.secretBuff || Game.mode !== "playing" || Game.introTimer > 0 || !Draw.secretImageReady) { return; }
+  Game.secretBuffImageFlashTimer = 60;
+  Game.secretBuffImageFlashSize = 24 + Math.floor(Math.random() * 17);
+  Game.secretBuffImageFlashX = Math.floor(Math.random() * (CONFIG.CANVAS_W - Game.secretBuffImageFlashSize));
+  Game.secretBuffImageFlashY = Math.floor(Math.random() * (CONFIG.CANVAS_H - Game.secretBuffImageFlashSize));
+  Game.secretBuffImageFlashStreaks = [];
+  for (var streak = 0; streak < 14; streak++) {
+    Game.secretBuffImageFlashStreaks.push({
+      x: Math.random() * CONFIG.CANVAS_W,
+      y: Math.random() * CONFIG.CANVAS_H,
+      speed: 5 + Math.random() * 7,
+      size: 1 + Math.random() * 3
+    });
+  }
+};
+Game.updateSecretBuffImageFlash = function () {
+  if (Input.secretImageFlashActivation) {
+    Input.secretImageFlashActivation = false;
+    Game.startSecretBuffImageFlash();
+    return;
+  }
+  if (!Player.secretBuff) {
+    Game.secretBuffImageFlashTimer = 0;
+    Game.secretBuffImageFlashStreaks = [];
+    return;
+  }
+  if (Game.mode !== "playing" || Game.introTimer > 0) {
+    Game.secretBuffImageFlashTimer = 0;
+    Game.secretBuffImageFlashStreaks = [];
+    return;
+  }
+  if (Game.secretBuffImageFlashTimer > 0) {
+    Game.secretBuffImageFlashTimer--;
+  }
+};
 Game.clearScreenSplats = function () {
   Game.screenSplats = [];
   Game.splatShotCount = 0;
@@ -830,6 +871,7 @@ Game.updateAutoplay = function () {
 // --- ONE FRAME --------------------------------------------------------  
 Game.update = function () {  
     Game.frame++;
+    Game.updateSecretBuffImageFlash();
     if (Game.autoplay) { Game.updateAutoplay(); }
 
   if (Input.secretImageToggle) {
@@ -873,6 +915,8 @@ Game.update = function () {
       Player.secretInvincibility = true;
       Player.invincible = true;
       Player.invincibleTimer = 999999;
+      Game.secretBuffImageFlashTimer = 0;
+      Game.secretBuffImageFlashStreaks = [];
       Game.showMessage("SECRET BUFF! Nearby enemies fall. Hold fire to unleash the white spray.");
     }
     return;

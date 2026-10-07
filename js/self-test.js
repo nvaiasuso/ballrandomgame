@@ -91,6 +91,11 @@ SelfTest.runInFrame = function (requestId) {
     Tutorial.checkpoint = null;
     Game.balanceBoostActive = false;
     Game.secretBuffCinematic = null;
+    Game.secretBuffImageFlashTimer = 0;
+    Game.secretBuffImageFlashX = 0;
+    Game.secretBuffImageFlashY = 0;
+    Game.secretBuffImageFlashSize = 0;
+    Game.secretBuffImageFlashStreaks = [];
     Draw.showSecretImage = false;
     Game.score = 0;
     Game.keepPerks = false;
@@ -98,6 +103,8 @@ SelfTest.runInFrame = function (requestId) {
     Player.secretInvincibility = false;
     Player.secretBuff = false;
     Player.secretSprayTimer = 0;
+    Input.secretImageFlashActivation = false;
+    Input.secretImageFlashPending = false;
     Tutorial.clearInput();
     Game.startLevel(CONFIG.START_LEVEL);
     Game.introTimer = 0;
@@ -187,6 +194,32 @@ SelfTest.runInFrame = function (requestId) {
       Tutorial.clearInput();
       Input.handleEndlessKey({ code: "KeyE", repeat: false, shiftKey: true, preventDefault: function () { prevented = true; } });
       assert(Input.endless && prevented, "Shift+E did not trigger Endless mode.");
+    });
+
+    test("Shift+L twice quickly requests the secret image flash", function () {
+      var originalPending = Input.secretImageFlashPending;
+      var originalActivation = Input.secretImageFlashActivation;
+      var prevented = false;
+      Input.secretImageFlashPending = false;
+      Input.secretImageFlashActivation = false;
+      try {
+        assert(Input.handleSecretImageFlashKey({
+          code: "KeyL", repeat: false, shiftKey: false, preventDefault: function () { prevented = true; }
+        }, 100) === false, "Plain L triggered the image flash.");
+        Input.handleSecretImageFlashKey({
+          code: "KeyL", repeat: false, shiftKey: true, preventDefault: function () { prevented = true; }
+        }, 100);
+        assert(Input.secretImageFlashPending && !Input.secretImageFlashActivation,
+          "The first Shift+L triggered the image flash.");
+        Input.handleSecretImageFlashKey({
+          code: "KeyL", repeat: false, shiftKey: true, preventDefault: function () { prevented = true; }
+        }, 200);
+        assert(!Input.secretImageFlashPending && Input.secretImageFlashActivation && prevented,
+          "Two quick Shift+L presses did not trigger the image flash.");
+      } finally {
+        Input.secretImageFlashPending = originalPending;
+        Input.secretImageFlashActivation = originalActivation;
+      }
     });
 
     test("Shift+E starts an Endless wave", function () {
@@ -314,6 +347,122 @@ SelfTest.runInFrame = function (requestId) {
         Draw.drawSecretImage = originalDrawSecretImage;
         Draw.secretImageReady = originalImageReady;
         Draw.showSecretImage = originalShowImage;
+      }
+    });
+
+    test("Secret buff image flash is small, fast, and sends white streaks downward", function () {
+      resetGame();
+      var originalImageReady = Draw.secretImageReady;
+      var originalRandom = Math.random;
+      var originalTimer = Game.secretBuffImageFlashTimer;
+      var originalStreaks = Game.secretBuffImageFlashStreaks;
+      var originalX = Game.secretBuffImageFlashX;
+      var originalY = Game.secretBuffImageFlashY;
+      var originalSize = Game.secretBuffImageFlashSize;
+      var originalSecretBuff = Player.secretBuff;
+      var originalMode = Game.mode;
+      Draw.secretImageReady = true;
+      Player.secretBuff = true;
+      Game.secretBuffImageFlashTimer = 0;
+      Math.random = function () { return 0; };
+      try {
+        Input.secretImageFlashActivation = true;
+        Game.updateSecretBuffImageFlash();
+        assert(Game.secretBuffImageFlashTimer === 60 && Game.secretBuffImageFlashSize === 24 &&
+          Game.secretBuffImageFlashStreaks.length === 14,
+          "The image was not set to flash for one second with tiny falling white streaks.");
+        assert(Game.secretBuffImageFlashX >= 0 && Game.secretBuffImageFlashY >= 0 &&
+          Game.secretBuffImageFlashX + Game.secretBuffImageFlashSize <= CONFIG.CANVAS_W &&
+          Game.secretBuffImageFlashY + Game.secretBuffImageFlashSize <= CONFIG.CANVAS_H,
+          "The photo flash position was outside the screen.");
+        assert(Game.secretBuffImageFlashStreaks.every(function (streak) { return streak.speed >= 5 && streak.speed < 12; }),
+          "The white streaks were not moving down quickly.");
+        Game.updateSecretBuffImageFlash();
+        assert(Game.secretBuffImageFlashTimer === 59, "The image flash did not last about one second.");
+        Game.mode = "paused";
+        Game.updateSecretBuffImageFlash();
+        assert(Game.secretBuffImageFlashTimer === 0 && Game.secretBuffImageFlashStreaks.length === 0,
+          "The photo flash persisted through a pause.");
+        Game.mode = "playing";
+        Player.secretBuff = false;
+        Game.updateSecretBuffImageFlash();
+        assert(Game.secretBuffImageFlashTimer === 0,
+          "The flash timers were not cleared after the secret buff ended.");
+      } finally {
+        Draw.secretImageReady = originalImageReady;
+        Math.random = originalRandom;
+        Game.secretBuffImageFlashTimer = originalTimer;
+        Game.secretBuffImageFlashStreaks = originalStreaks;
+        Game.secretBuffImageFlashX = originalX;
+        Game.secretBuffImageFlashY = originalY;
+        Game.secretBuffImageFlashSize = originalSize;
+        Player.secretBuff = originalSecretBuff;
+        Game.mode = originalMode;
+      }
+    });
+
+    test("Secret buff photo flash is visible only during active play", function () {
+      resetGame();
+      var originalContext = Draw.ctx;
+      var originalImage = Draw.secretImage;
+      var originalImageReady = Draw.secretImageReady;
+      var originalTimer = Game.secretBuffImageFlashTimer;
+      var originalStreaks = Game.secretBuffImageFlashStreaks;
+      var originalX = Game.secretBuffImageFlashX;
+      var originalY = Game.secretBuffImageFlashY;
+      var originalSize = Game.secretBuffImageFlashSize;
+      var originalSecretBuff = Player.secretBuff;
+      var originalMode = Game.mode;
+      var originalStrokeCalls = 0;
+      var drawnImages = [];
+      var streakY = [];
+      Draw.ctx = {
+        save: function () {}, restore: function () {},
+        stroke: function () { originalStrokeCalls++; },
+        beginPath: function () {}, moveTo: function (x, y) { if (x === 15) { streakY.push(y); } },
+        lineTo: function () {}, arc: function () {}, fill: function () {},
+        drawImage: function (image, x, y, width, height) {
+          drawnImages.push({ image: image, x: x, y: y, width: width, height: height, alpha: this.globalAlpha });
+        }
+      };
+      Draw.secretImage = { naturalWidth: 800, naturalHeight: 400 };
+      Draw.secretImageReady = true;
+      Game.secretBuffImageFlashTimer = 60;
+      Game.secretBuffImageFlashSize = 32;
+      Game.secretBuffImageFlashX = 110;
+      Game.secretBuffImageFlashY = 70;
+      Game.secretBuffImageFlashStreaks = [{ x: 15, y: 20, speed: 6, size: 2 }];
+      try {
+        Player.secretBuff = false;
+        Draw.secretBuffImageFlash();
+        Player.secretBuff = true;
+        Game.secretBuffImageFlashTimer = 60;
+        Draw.secretBuffImageFlash();
+        Game.secretBuffImageFlashTimer = 59;
+        Draw.secretBuffImageFlash();
+        Game.secretBuffImageFlashTimer = 58;
+        Draw.secretBuffImageFlash();
+        assert(drawnImages.length === 2 && originalStrokeCalls === 3 &&
+          streakY[1] > streakY[0] && streakY[2] > streakY[1],
+          "The image did not flicker rapidly or the white streaks did not fall.");
+        assert(drawnImages[1].image === Draw.secretImage && drawnImages[1].x === 110 && drawnImages[1].y === 78 &&
+          drawnImages[1].width === 32 && drawnImages[1].height === 16 && drawnImages[1].alpha === 0.12,
+          "The photo was not drawn at its random position, reduced size, and original aspect ratio.");
+        Game.mode = "paused";
+        Draw.secretBuffImageFlash();
+        assert(drawnImages.length === 2 && originalStrokeCalls === 3,
+          "The photo flash appeared while the game was paused.");
+      } finally {
+        Draw.ctx = originalContext;
+        Draw.secretImage = originalImage;
+        Draw.secretImageReady = originalImageReady;
+        Game.secretBuffImageFlashTimer = originalTimer;
+        Game.secretBuffImageFlashStreaks = originalStreaks;
+        Game.secretBuffImageFlashX = originalX;
+        Game.secretBuffImageFlashY = originalY;
+        Game.secretBuffImageFlashSize = originalSize;
+        Player.secretBuff = originalSecretBuff;
+        Game.mode = originalMode;
       }
     });
 
