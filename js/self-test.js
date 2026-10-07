@@ -133,6 +133,11 @@ SelfTest.runInFrame = function (requestId) {
       }), "The new parkour stages or their terrain pieces are missing.");
     });
 
+    test("Crossfire timer is generous enough", function () {
+      resetGame();
+      assert(CONFIG.LEVEL_TIMES[7] >= 28, "Crossfire should have more than the default 20-second timer.");
+    });
+
     test("Solid tile collision", function () {
       resetGame();
       var original = Level.charAt(0, 0);

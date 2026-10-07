@@ -830,30 +830,44 @@ canvas {
 body.mobile-mode canvas { touch-action: none; }
 
 #game-shell:fullscreen {
-  background: #f2efe8;
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
   box-sizing: border-box;
-  padding: 10px 2vw;
-  overflow: auto;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f2efe8;
 }
 
 #game-shell:fullscreen #hud {
-  max-width: min(94vw, 1500px);
+  width: 100%;
+  max-width: none;
   gap: 5px;
-  margin-bottom: 4px;
+  margin: 0 0 4px;
+  padding: 0 8px;
   font-size: 9px;
+  box-sizing: border-box;
 }
 
 #game-shell:fullscreen #hud span {
   min-width: 0;
+  flex: 1 1 auto;
   padding: 5px 6px;
 }
 
 #game-shell:fullscreen canvas {
-  width: min(94vw, 1500px);
-  height: auto;
-  max-height: 78vh;
-  object-fit: contain;
+  width: 100vw;
+  height: calc(100vh - 78px);
+  max-width: 100vw;
+  max-height: calc(100vh - 78px);
+  object-fit: fill;
+  display: block;
+  border-radius: 0;
+  margin: 0;
 }
 
 #game-shell:fullscreen h1,
