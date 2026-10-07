@@ -263,7 +263,7 @@ Draw.secretBuffImageFlash = function () {
   if (!Player.secretBuff || Game.mode !== "playing" || Game.introTimer > 0 ||
       Game.secretBuffImageFlashTimer <= 0 || !Draw.secretImageReady) { return; }
   var ctx = Draw.ctx;
-  var elapsed = 60 - Game.secretBuffImageFlashTimer;
+  var elapsed = 24 - Game.secretBuffImageFlashTimer;
   for (var i = 0; i < Game.secretBuffImageFlashStreaks.length; i++) {
     var streak = Game.secretBuffImageFlashStreaks[i];
     var x = streak.x + Math.sin((elapsed + i * 7) * 0.16) * 5;
@@ -284,7 +284,7 @@ Draw.secretBuffImageFlash = function () {
     ctx.fill();
     ctx.restore();
   }
-  if (elapsed % 4 >= 2) { return; }
+  if (elapsed % 2 === 1) { return; }
   var size = Game.secretBuffImageFlashSize;
   var x = Game.secretBuffImageFlashX;
   var y = Game.secretBuffImageFlashY;
@@ -292,7 +292,7 @@ Draw.secretBuffImageFlash = function () {
   var imageWidth = Draw.secretImage.naturalWidth * imageScale;
   var imageHeight = Draw.secretImage.naturalHeight * imageScale;
   ctx.save();
-  ctx.globalAlpha = 0.12;
+  ctx.globalAlpha = 0.5;
   ctx.drawImage(Draw.secretImage, x + (size - imageWidth) / 2, y + (size - imageHeight) / 2,
     imageWidth, imageHeight);
   ctx.restore();

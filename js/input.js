@@ -30,8 +30,6 @@ var Input = {
   balanceBoostPending: false,
   balanceBoostAt: 0,
   secretImageFlashActivation: false,
-  secretImageFlashPending: false,
-  secretImageFlashAt: 0,
   secretImageToggle: false,
   wipeScreenSplats: false,
   secretComboProgress: 0,
@@ -72,16 +70,9 @@ Input.handleEndlessKey = function (event) {
   return true;
 };
 
-Input.handleSecretImageFlashKey = function (event, now) {
+Input.handleSecretImageFlashKey = function (event) {
   if (event.repeat || !event.shiftKey || event.code !== "KeyL") { return false; }
-  var flashTime = typeof now === "number" ? now : Date.now();
-  if (Input.secretImageFlashPending && flashTime - Input.secretImageFlashAt <= 400) {
-    Input.secretImageFlashPending = false;
-    Input.secretImageFlashActivation = true;
-  } else {
-    Input.secretImageFlashPending = true;
-    Input.secretImageFlashAt = flashTime;
-  }
+  Input.secretImageFlashActivation = true;
   event.preventDefault();
   return true;
 };

@@ -12,7 +12,7 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - X or K - fire after collecting a gun
 - SHIFT+E - start Endless mode
 - SHIFT+O - toggle the secret-ring photo; the ring shows E tokens by default
-- In secret-buff mode, press SHIFT+L twice quickly to flash the image and falling white streaks
+- In secret-buff mode, press SHIFT+L to flash the image and falling white streaks
 - Y - wipe the white shot splats from the screen
 - R - restart the level
 - G or the GAMBLE button - risk a random buff or debuff once per level
@@ -24,7 +24,7 @@ Push your changes, then open your GitHub Pages link. Press `Ctrl + Shift + R` to
 - Spend carried shards on speed, jump, or health upgrades before entering a selected level
 - Secret buff - enter UP, UP, DOWN, DOWN, LEFT, LEFT, RIGHT, RIGHT with the arrow keys
 
-The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. A glowing companion follows you and fires homing shots. Its activation freezes play for a short cinematic. Add an `image.png` file beside `index.html` to use your own image. While the secret buff is active, SHIFT+L twice quickly shows it for about one second in a tiny, faint, fast-flickering spot, with white streaks falling down the screen. SHIFT+O can replace the orbiting orbs with the image. Without an image, the orbs use the white-and-cyan design.
+The secret buff grants invincibility, defeats nearby enemies, and turns fire into a long-range white spray that instantly defeats enemies in its path. A glowing companion follows you and fires homing shots. Its activation freezes play for a short cinematic. Add an `image.png` file beside `index.html` to use your own image. While the secret buff is active, SHIFT+L shows it for a split second in a visible, fast-flickering spot, with white streaks falling down the screen. SHIFT+O can replace the orbiting orbs with the image. Without an image, the orbs use the white-and-cyan design.
 
 The campaign has 46 stages, including a one-screen Micro Sprint, enemy arenas, gaps, spikes, moving platforms, stairs, and six dedicated parkour levels.
 

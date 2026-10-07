@@ -56,8 +56,8 @@ Game.secretBuffImageFlashSize = 0;
 Game.secretBuffImageFlashStreaks = [];
 Game.startSecretBuffImageFlash = function () {
   if (!Player.secretBuff || Game.mode !== "playing" || Game.introTimer > 0 || !Draw.secretImageReady) { return; }
-  Game.secretBuffImageFlashTimer = 60;
-  Game.secretBuffImageFlashSize = 24 + Math.floor(Math.random() * 17);
+  Game.secretBuffImageFlashTimer = 24;
+  Game.secretBuffImageFlashSize = 48 + Math.floor(Math.random() * 17);
   Game.secretBuffImageFlashX = Math.floor(Math.random() * (CONFIG.CANVAS_W - Game.secretBuffImageFlashSize));
   Game.secretBuffImageFlashY = Math.floor(Math.random() * (CONFIG.CANVAS_H - Game.secretBuffImageFlashSize));
   Game.secretBuffImageFlashStreaks = [];
